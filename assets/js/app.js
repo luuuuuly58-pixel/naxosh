@@ -1,0 +1,412 @@
+/* ============================================================
+   app.js — لۆجیکی سەرەکی: مینۆ، فووتەر، تۆمارکردن، گفتوگۆ
+   ============================================================ */
+
+/* ---------- یارمەتیدەرە گشتییەکان ---------- */
+
+function el(html) {
+  const t = document.createElement("template");
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+
+function qs(name) {
+  return new URLSearchParams(location.search).get(name);
+}
+
+/* ئەڤاتاری ڕەنگاوڕەنگ بە یەکەم پیتی ناو (بێ پێویستی بە وێنە) */
+function avatar(name, size = 56) {
+  const colors = ["#0d9488", "#2563eb", "#7c3aed", "#db2777", "#ea580c", "#0891b2", "#16a34a"];
+  const initial = (name || "?").replace("د. ", "").trim().charAt(0);
+  const color = colors[(name || "").length % colors.length];
+  return `<div class="avatar" style="width:${size}px;height:${size}px;background:${color};font-size:${size * 0.4}px">${initial}</div>`;
+}
+
+function specName(id) {
+  const s = SPECIALTIES.find(x => x.id === id);
+  return s ? s.name : "";
+}
+
+function stars(rating) {
+  return `<span class="stars">★</span> ${toKurdishDigits(rating)}`;
+}
+
+/* ---------- کۆگای ناوخۆیی (localStorage) ---------- */
+
+function getBookings() {
+  try { return JSON.parse(localStorage.getItem("naxosh_bookings") || "[]"); }
+  catch { return []; }
+}
+function saveBooking(b) {
+  const list = getBookings();
+  b.id = Date.now();
+  b.status = "چاوەڕوان";
+  list.push(b);
+  localStorage.setItem("naxosh_bookings", JSON.stringify(list));
+  return b;
+}
+function cancelBooking(id) {
+  const list = getBookings().filter(b => b.id !== id);
+  localStorage.setItem("naxosh_bookings", JSON.stringify(list));
+}
+
+function getChat(doctorId) {
+  try { return JSON.parse(localStorage.getItem("naxosh_chat_" + doctorId) || "[]"); }
+  catch { return []; }
+}
+function saveChat(doctorId, messages) {
+  localStorage.setItem("naxosh_chat_" + doctorId, JSON.stringify(messages));
+}
+
+/* ---------- مینۆ و فووتەر و ئاگاداری فریاکەوتن ---------- */
+
+function renderChrome(active) {
+  const header = document.getElementById("site-header");
+  if (header) {
+    header.innerHTML = `
+      <div class="emergency-bar">⚠️ ${STR.emergency}</div>
+      <nav class="navbar">
+        <a class="brand" href="index.html">
+          <span class="brand-mark">＋</span>
+          <span>${STR.brand} <small>${STR.tagline}</small></span>
+        </a>
+        <button class="nav-toggle" aria-label="مینۆ" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+        <div class="nav-links">
+          <a href="index.html" class="${active === 'home' ? 'active' : ''}">${STR.nav.home}</a>
+          <a href="specialties.html" class="${active === 'specialties' ? 'active' : ''}">${STR.nav.specialties}</a>
+          <a href="doctors.html" class="${active === 'doctors' ? 'active' : ''}">${STR.nav.doctors}</a>
+          <a href="appointments.html" class="${active === 'appointments' ? 'active' : ''}">${STR.nav.appointments}</a>
+          <a href="doctors.html" class="btn-nav">${STR.nav.book}</a>
+        </div>
+      </nav>`;
+  }
+
+  const footer = document.getElementById("site-footer");
+  if (footer) {
+    footer.innerHTML = `
+      <div class="footer-inner">
+        <div>
+          <div class="brand"><span class="brand-mark">＋</span> ${STR.brand}</div>
+          <p>${STR.footer.note}</p>
+        </div>
+        <div class="footer-links">
+          <a href="specialties.html">${STR.nav.specialties}</a>
+          <a href="doctors.html">${STR.nav.doctors}</a>
+          <a href="appointments.html">${STR.nav.appointments}</a>
+        </div>
+      </div>
+      <div class="footer-bottom">${STR.footer.rights}</div>`;
+  }
+}
+
+/* ---------- کارتی پزیشک ---------- */
+
+function doctorCard(d) {
+  return `
+    <article class="doc-card">
+      <div class="doc-head">
+        ${avatar(d.name, 64)}
+        <div>
+          <h3>${d.name}</h3>
+          <p class="doc-title">${d.title}</p>
+          <p class="doc-rating">${stars(d.rating)} <span class="muted">(${toKurdishDigits(d.reviews)})</span></p>
+        </div>
+      </div>
+      <div class="doc-meta">
+        <span class="badge ${d.today ? 'badge-green' : 'badge-gray'}">${d.today ? STR.common.availableToday : STR.common.notAvailableToday}</span>
+        <span class="muted">${toKurdishDigits(d.exp)} ${STR.common.experience}</span>
+      </div>
+      <div class="doc-price">${formatPrice(d.price)} ${STR.common.currency}</div>
+      <div class="doc-actions">
+        <a class="btn btn-primary" href="doctor.html?id=${d.id}">${STR.common.book}</a>
+        <a class="btn btn-ghost" href="doctor.html?id=${d.id}">${STR.common.viewProfile}</a>
+      </div>
+    </article>`;
+}
+
+/* ---------- پەیجی پزیشکەکان (doctors.html) ---------- */
+
+function initDoctors() {
+  const grid = document.getElementById("doc-grid");
+  const filterBar = document.getElementById("filter-bar");
+  if (!grid) return;
+
+  const preset = qs("spec");
+  let current = preset || "all";
+
+  const chips = [{ id: "all", name: STR.common.all }, ...SPECIALTIES.map(s => ({ id: s.id, name: s.name }))];
+  filterBar.innerHTML = chips.map(c =>
+    `<button class="chip ${c.id === current ? 'chip-active' : ''}" data-id="${c.id}">${c.name}</button>`
+  ).join("");
+
+  function render() {
+    const list = current === "all" ? DOCTORS : DOCTORS.filter(d => d.spec === current);
+    grid.innerHTML = list.length
+      ? list.map(doctorCard).join("")
+      : `<p class="empty">هیچ پزیشکێک نەدۆزرایەوە.</p>`;
+  }
+
+  filterBar.addEventListener("click", e => {
+    const btn = e.target.closest(".chip");
+    if (!btn) return;
+    current = btn.dataset.id;
+    [...filterBar.children].forEach(c => c.classList.toggle("chip-active", c === btn));
+    render();
+  });
+
+  render();
+}
+
+/* ---------- پەیجی پزیشک + تۆمارکردن (doctor.html) ---------- */
+
+function initDoctorProfile() {
+  const wrap = document.getElementById("doctor-detail");
+  if (!wrap) return;
+
+  const d = DOCTORS.find(x => x.id === Number(qs("id"))) || DOCTORS[0];
+  const spec = SPECIALTIES.find(s => s.id === d.spec);
+
+  wrap.innerHTML = `
+    <div class="profile-card">
+      <div class="profile-head">
+        ${avatar(d.name, 88)}
+        <div>
+          <h1>${d.name}</h1>
+          <p class="doc-title">${d.title}</p>
+          <p class="doc-rating">${stars(d.rating)} <span class="muted">(${toKurdishDigits(d.reviews)} ${STR.common.reviews})</span></p>
+          <span class="badge ${d.today ? 'badge-green' : 'badge-gray'}">${d.today ? STR.common.availableToday : STR.common.notAvailableToday}</span>
+        </div>
+      </div>
+      <p class="bio">${d.bio}</p>
+      <ul class="profile-facts">
+        <li><strong>${STR.common.experience}:</strong> ${toKurdishDigits(d.exp)}</li>
+        <li><strong>${STR.common.languages}:</strong> ${d.langs.join("، ")}</li>
+        <li><strong>${STR.common.price}:</strong> ${formatPrice(d.price)} ${STR.common.currency} ${STR.common.perVisit}</li>
+      </ul>
+      <div class="treats-box">
+        <strong>${STR.common.treats}</strong>
+        <div class="tags">${spec.treats.map(t => `<span class="tag">${t}</span>`).join("")}</div>
+      </div>
+    </div>
+
+    <div class="booking-card" id="booking-card">
+      <h2>تۆمارکردنی چاوپێکەوتن</h2>
+      <label>ڕۆژ هەڵبژێرە</label>
+      <div class="days" id="days"></div>
+      <label>کات هەڵبژێرە</label>
+      <div class="slots" id="slots"></div>
+      <label>کورتە باسی نیشانەکانت (ئارەزوومەندانە)</label>
+      <textarea id="symptoms" rows="3" placeholder="بۆ نموونە: لە دوو ڕۆژە سەرئێشە و تام هەیە..."></textarea>
+      <button class="btn btn-primary btn-block" id="confirm-btn">پشتڕاستکردنەوەی تۆمارکردن</button>
+    </div>`;
+
+  // ڕۆژەکان (٧ ڕۆژی داهاتوو)
+  const dayNames = ["یەکشەممە", "دووشەممە", "سێشەممە", "چوارشەممە", "پێنجشەممە", "هەینی", "شەممە"];
+  const daysBox = document.getElementById("days");
+  const today = new Date();
+  let chosenDay = 0, chosenSlot = null;
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date(today.getTime() + i * 86400000);
+    const label = i === 0 ? "ئەمڕۆ" : dayNames[dt.getDay()];
+    daysBox.appendChild(el(`<button class="day ${i === 0 ? 'day-active' : ''}" data-i="${i}">
+      <span>${label}</span><b>${toKurdishDigits(dt.getDate())}</b></button>`));
+  }
+  daysBox.addEventListener("click", e => {
+    const b = e.target.closest(".day"); if (!b) return;
+    chosenDay = Number(b.dataset.i);
+    [...daysBox.children].forEach(c => c.classList.toggle("day-active", c === b));
+  });
+
+  const slotsBox = document.getElementById("slots");
+  slotsBox.innerHTML = TIME_SLOTS.map(t => `<button class="slot" data-t="${t}">${t}</button>`).join("");
+  slotsBox.addEventListener("click", e => {
+    const b = e.target.closest(".slot"); if (!b) return;
+    chosenSlot = b.dataset.t;
+    [...slotsBox.children].forEach(c => c.classList.toggle("slot-active", c === b));
+  });
+
+  document.getElementById("confirm-btn").addEventListener("click", () => {
+    if (!chosenSlot) { alert("تکایە کاتێک هەڵبژێرە."); return; }
+    const dt = new Date(today.getTime() + chosenDay * 86400000);
+    const dayLabel = chosenDay === 0 ? "ئەمڕۆ" : dayNames[dt.getDay()];
+    const booking = saveBooking({
+      doctorId: d.id, doctorName: d.name, doctorTitle: d.title,
+      spec: d.spec, price: d.price,
+      day: `${dayLabel} ${toKurdishDigits(dt.getDate())}`,
+      time: chosenSlot,
+      symptoms: document.getElementById("symptoms").value.trim()
+    });
+    showBookingSuccess(d, booking);
+  });
+}
+
+function showBookingSuccess(d, booking) {
+  const card = document.getElementById("booking-card");
+  card.innerHTML = `
+    <div class="success">
+      <div class="success-icon">✅</div>
+      <h2>تۆمارکردنەکەت سەرکەوتوو بوو!</h2>
+      <p>چاوپێکەوتنت لەگەڵ <strong>${d.name}</strong></p>
+      <p class="success-when">📅 ${booking.day} — 🕐 ${booking.time}</p>
+      <a class="btn btn-primary btn-block" href="chat.html?doctor=${d.id}">${STR.common.startChat}</a>
+      <a class="btn btn-ghost btn-block" href="appointments.html">بینینی چاوپێکەوتنەکانم</a>
+    </div>`;
+}
+
+/* ---------- پەیجی گفتوگۆ (chat.html) ---------- */
+
+function initChat() {
+  const box = document.getElementById("chat-box");
+  if (!box) return;
+
+  const d = DOCTORS.find(x => x.id === Number(qs("doctor"))) || DOCTORS[0];
+  document.getElementById("chat-doctor").innerHTML =
+    `${avatar(d.name, 44)}<div><strong>${d.name}</strong><span class="muted">${d.title} • ئۆنلاین 🟢</span></div>`;
+
+  let messages = getChat(d.id);
+  let replyIndex = 0;
+
+  function paint() {
+    box.innerHTML = messages.map(m =>
+      `<div class="msg ${m.from === 'me' ? 'msg-me' : 'msg-doc'}">
+         ${m.from === 'doc' ? avatar(d.name, 32) : ''}
+         <div class="bubble">${m.text}<span class="time">${m.time}</span></div>
+       </div>`).join("");
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // ئەگەر یەکەم جارە، پزیشک سڵاو دەکات
+  if (messages.length === 0) {
+    messages.push({ from: "doc", text: CHAT_REPLIES[0], time: nowTime() });
+    replyIndex = 1;
+    saveChat(d.id, messages);
+  } else {
+    replyIndex = Math.min(messages.filter(m => m.from === "doc").length, CHAT_REPLIES.length - 1);
+  }
+  paint();
+
+  const input = document.getElementById("chat-input");
+  const form = document.getElementById("chat-form");
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    messages.push({ from: "me", text, time: nowTime() });
+    input.value = "";
+    saveChat(d.id, messages);
+    paint();
+
+    // وەڵامی پزیشک بە دواکەوتنێکی کەم
+    const typing = el(`<div class="msg msg-doc">${avatar(d.name, 32)}<div class="bubble typing">●●●</div></div>`);
+    box.appendChild(typing); box.scrollTop = box.scrollHeight;
+    setTimeout(() => {
+      const reply = CHAT_REPLIES[Math.min(replyIndex, CHAT_REPLIES.length - 1)];
+      replyIndex++;
+      messages.push({ from: "doc", text: reply, time: nowTime() });
+      saveChat(d.id, messages);
+      paint();
+    }, 1100);
+  });
+}
+
+function nowTime() {
+  const d = new Date();
+  return toKurdishDigits(String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"));
+}
+
+/* ---------- پەیجی چاوپێکەوتنەکانم (appointments.html) ---------- */
+
+function initAppointments() {
+  const wrap = document.getElementById("appt-list");
+  if (!wrap) return;
+  const list = getBookings().reverse();
+
+  if (list.length === 0) {
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <h3>هێشتا هیچ چاوپێکەوتنێکت نییە</h3>
+        <p>پزیشکێک هەڵبژێرە و یەکەم چاوپێکەوتنت تۆمار بکە.</p>
+        <a class="btn btn-primary" href="doctors.html">${STR.nav.book}</a>
+      </div>`;
+    return;
+  }
+
+  wrap.innerHTML = list.map(b => `
+    <article class="appt-card">
+      ${avatar(b.doctorName, 56)}
+      <div class="appt-info">
+        <h3>${b.doctorName}</h3>
+        <p class="muted">${specName(b.spec)}</p>
+        <p class="appt-when">📅 ${b.day} — 🕐 ${b.time}</p>
+        ${b.symptoms ? `<p class="appt-sym">📝 ${b.symptoms}</p>` : ""}
+      </div>
+      <div class="appt-side">
+        <span class="badge badge-amber">${b.status}</span>
+        <a class="btn btn-sm btn-primary" href="chat.html?doctor=${b.doctorId}">${STR.common.startChat}</a>
+        <button class="btn btn-sm btn-ghost" data-cancel="${b.id}">هەڵوەشاندنەوە</button>
+      </div>
+    </article>`).join("");
+
+  wrap.addEventListener("click", e => {
+    const btn = e.target.closest("[data-cancel]");
+    if (!btn) return;
+    if (confirm("دڵنیایت لە هەڵوەشاندنەوەی ئەم چاوپێکەوتنە؟")) {
+      cancelBooking(Number(btn.dataset.cancel));
+      initAppointments();
+    }
+  });
+}
+
+/* ---------- پەیجی خزمەتگوزارییەکان (specialties.html) ---------- */
+
+function initSpecialties() {
+  const grid = document.getElementById("spec-grid");
+  if (grid) {
+    grid.innerHTML = SPECIALTIES.map(s => `
+      <article class="spec-card">
+        <div class="spec-icon">${s.icon}</div>
+        <h3>${s.name}</h3>
+        <p>${s.desc}</p>
+        <div class="tags">${s.treats.map(t => `<span class="tag">${t}</span>`).join("")}</div>
+        <a class="btn btn-ghost btn-block" href="doctors.html?spec=${s.id}">بینینی پزیشکەکان</a>
+      </article>`).join("");
+  }
+  const notBox = document.getElementById("not-online");
+  if (notBox) {
+    notBox.innerHTML = NOT_ONLINE.map(n => `<li><span>${n.icon}</span> ${n.text}</li>`).join("");
+  }
+}
+
+/* ---------- پەیجی سەرەتا (index.html) ---------- */
+
+function initHome() {
+  const grid = document.getElementById("home-spec-grid");
+  if (grid) {
+    grid.innerHTML = SPECIALTIES.map(s => `
+      <a class="spec-mini" href="doctors.html?spec=${s.id}">
+        <span class="spec-icon">${s.icon}</span>
+        <span>${s.name}</span>
+        <small>${s.short}</small>
+      </a>`).join("");
+  }
+  const docs = document.getElementById("home-doctors");
+  if (docs) {
+    docs.innerHTML = DOCTORS.slice(0, 4).map(doctorCard).join("");
+  }
+}
+
+/* ---------- ڕێکخەری گشتی ---------- */
+
+document.addEventListener("DOMContentLoaded", () => {
+  const page = document.body.dataset.page;
+  renderChrome(page);
+  ({
+    home: initHome,
+    specialties: initSpecialties,
+    doctors: initDoctors,
+    doctor: initDoctorProfile,
+    chat: initChat,
+    appointments: initAppointments
+  }[page] || (() => {}))();
+});

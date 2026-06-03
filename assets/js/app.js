@@ -31,6 +31,16 @@ function stars(rating) {
   return `<span class="stars">★</span> ${toKurdishDigits(rating)}`;
 }
 
+/* ڕۆژەکانی بەردەستی پزیشک (٠=یەکشەممە ... ٦=شەممە) */
+function docDays(d) {
+  if (Array.isArray(d.days)) return d.days;
+  return d.today ? [0, 1, 2, 3, 4, 5, 6] : [];   // گونجاندن لەگەڵ داتای کۆن
+}
+/* ئایا پزیشک ئەمڕۆ بەردەستە؟ */
+function availableToday(d) {
+  return docDays(d).includes(new Date().getDay());
+}
+
 /* ---------- کۆگای ناوخۆیی (localStorage) ---------- */
 
 function getBookings() {
@@ -60,6 +70,21 @@ function saveChat(doctorId, messages) {
 
 /* ---------- مینۆ و فووتەر و ئاگاداری فریاکەوتن ---------- */
 
+function authArea() {
+  if (NAXOSH.isAdmin()) {
+    return `
+      <a href="admin.html" class="auth-chip auth-admin">🛠️ ${STR.admin.panel}</a>
+      <a href="#" class="auth-logout" onclick="NAXOSH.adminLogout();location.reload();return false">${STR.auth.logout}</a>`;
+  }
+  const user = NAXOSH.getUser();
+  if (user) {
+    return `
+      <span class="auth-chip">👤 ${user.name}</span>
+      <a href="#" class="auth-logout" onclick="NAXOSH.userLogout();location.reload();return false">${STR.auth.logout}</a>`;
+  }
+  return "";
+}
+
 function renderChrome(active) {
   const header = document.getElementById("site-header");
   if (header) {
@@ -77,6 +102,7 @@ function renderChrome(active) {
           <a href="doctors.html" class="${active === 'doctors' ? 'active' : ''}">${STR.nav.doctors}</a>
           <a href="appointments.html" class="${active === 'appointments' ? 'active' : ''}">${STR.nav.appointments}</a>
           <a href="doctors.html" class="btn-nav">${STR.nav.book}</a>
+          <span class="auth-area">${authArea()}</span>
         </div>
       </nav>`;
   }
@@ -93,10 +119,50 @@ function renderChrome(active) {
           <a href="specialties.html">${STR.nav.specialties}</a>
           <a href="doctors.html">${STR.nav.doctors}</a>
           <a href="appointments.html">${STR.nav.appointments}</a>
+          <a href="admin.html">${STR.footer.admin}</a>
         </div>
       </div>
       <div class="footer-bottom">${STR.footer.rights}</div>`;
   }
+}
+
+/* ---------- چوونەژوورەوەی بەکارهێنەر (ناو + تەلەفۆن) ---------- */
+
+function openAuthModal(onSuccess) {
+  const existing = NAXOSH.getUser() || { name: "", phone: "" };
+  const overlay = el(`
+    <div class="modal-overlay">
+      <div class="modal">
+        <button class="modal-close" aria-label="${STR.auth.cancel}">✕</button>
+        <h2>${STR.auth.loginTitle}</h2>
+        <p class="modal-sub">${STR.auth.loginSub}</p>
+        <label>${STR.auth.fullName}</label>
+        <input type="text" id="auth-name" value="${existing.name}" placeholder="${STR.auth.fullNamePh}">
+        <label>${STR.auth.phone}</label>
+        <input type="tel" id="auth-phone" value="${existing.phone}" placeholder="${STR.auth.phonePh}" dir="ltr">
+        <p class="auth-err" id="auth-err"></p>
+        <button class="btn btn-primary btn-block" id="auth-go">${STR.auth.continue}</button>
+      </div>
+    </div>`);
+
+  function close() { overlay.remove(); }
+  overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+
+  overlay.querySelector("#auth-go").addEventListener("click", () => {
+    const name = overlay.querySelector("#auth-name").value.trim();
+    const phone = overlay.querySelector("#auth-phone").value.trim();
+    const err = overlay.querySelector("#auth-err");
+    if (!name) { err.textContent = STR.auth.needName; return; }
+    if (phone.replace(/\D/g, "").length < 7) { err.textContent = STR.auth.needPhone; return; }
+    NAXOSH.userLogin(name, phone);
+    close();
+    renderChrome(document.body.dataset.page);
+    onSuccess();
+  });
+
+  document.body.appendChild(overlay);
+  overlay.querySelector("#auth-name").focus();
 }
 
 /* ---------- کارتی پزیشک ---------- */
@@ -113,7 +179,7 @@ function doctorCard(d) {
         </div>
       </div>
       <div class="doc-meta">
-        <span class="badge ${d.today ? 'badge-green' : 'badge-gray'}">${d.today ? STR.common.availableToday : STR.common.notAvailableToday}</span>
+        <span class="badge ${availableToday(d) ? 'badge-green' : 'badge-gray'}">${availableToday(d) ? STR.common.availableToday : STR.common.notAvailableToday}</span>
         <span class="muted">${toKurdishDigits(d.exp)} ${STR.common.experience}</span>
       </div>
       <div class="doc-price">${formatPrice(d.price)} ${STR.common.currency}</div>
@@ -174,7 +240,7 @@ function initDoctorProfile() {
           <h1>${d.name}</h1>
           <p class="doc-title">${d.title}</p>
           <p class="doc-rating">${stars(d.rating)} <span class="muted">(${toKurdishDigits(d.reviews)} ${STR.common.reviews})</span></p>
-          <span class="badge ${d.today ? 'badge-green' : 'badge-gray'}">${d.today ? STR.common.availableToday : STR.common.notAvailableToday}</span>
+          <span class="badge ${availableToday(d) ? 'badge-green' : 'badge-gray'}">${availableToday(d) ? STR.common.availableToday : STR.common.notAvailableToday}</span>
         </div>
       </div>
       <p class="bio">${d.bio}</p>
@@ -200,19 +266,26 @@ function initDoctorProfile() {
       <button class="btn btn-primary btn-block" id="confirm-btn">پشتڕاستکردنەوەی تۆمارکردن</button>
     </div>`;
 
-  // ڕۆژەکان (٧ ڕۆژی داهاتوو)
-  const dayNames = ["یەکشەممە", "دووشەممە", "سێشەممە", "چوارشەممە", "پێنجشەممە", "هەینی", "شەممە"];
+  // ڕۆژەکان (٧ ڕۆژی داهاتوو) — تەنها ئەو ڕۆژانە بەردەستن کە پزیشک کاری تێدا دەکات
+  const dayNames = STR.days || ["یەکشەممە", "دووشەممە", "سێشەممە", "چوارشەممە", "پێنجشەممە", "هەینی", "شەممە"];
   const daysBox = document.getElementById("days");
   const today = new Date();
-  let chosenDay = 0, chosenSlot = null;
+  const avail = docDays(d);
+  let chosenDay = null, chosenSlot = null, firstAvail = null;
   for (let i = 0; i < 7; i++) {
     const dt = new Date(today.getTime() + i * 86400000);
+    const ok = avail.includes(dt.getDay());
+    if (ok && firstAvail === null) firstAvail = i;
     const label = i === 0 ? "ئەمڕۆ" : dayNames[dt.getDay()];
-    daysBox.appendChild(el(`<button class="day ${i === 0 ? 'day-active' : ''}" data-i="${i}">
+    daysBox.appendChild(el(`<button class="day ${i === firstAvail ? 'day-active' : ''} ${ok ? '' : 'day-off'}" data-i="${i}" ${ok ? '' : 'disabled'}>
       <span>${label}</span><b>${toKurdishDigits(dt.getDate())}</b></button>`));
   }
+  chosenDay = firstAvail;
+  if (firstAvail === null) {
+    daysBox.insertAdjacentHTML("afterend", `<p class="muted" style="margin-top:8px">ئەم پزیشکە لەم ٧ ڕۆژەی داهاتوودا بەردەست نییە.</p>`);
+  }
   daysBox.addEventListener("click", e => {
-    const b = e.target.closest(".day"); if (!b) return;
+    const b = e.target.closest(".day"); if (!b || b.disabled) return;
     chosenDay = Number(b.dataset.i);
     [...daysBox.children].forEach(c => c.classList.toggle("day-active", c === b));
   });
@@ -226,17 +299,28 @@ function initDoctorProfile() {
   });
 
   document.getElementById("confirm-btn").addEventListener("click", () => {
+    if (chosenDay === null) { alert("ئەم پزیشکە ڕۆژی بەردەستی نییە."); return; }
     if (!chosenSlot) { alert("تکایە کاتێک هەڵبژێرە."); return; }
-    const dt = new Date(today.getTime() + chosenDay * 86400000);
-    const dayLabel = chosenDay === 0 ? "ئەمڕۆ" : dayNames[dt.getDay()];
-    const booking = saveBooking({
-      doctorId: d.id, doctorName: d.name, doctorTitle: d.title,
-      spec: d.spec, price: d.price,
-      day: `${dayLabel} ${toKurdishDigits(dt.getDate())}`,
-      time: chosenSlot,
-      symptoms: document.getElementById("symptoms").value.trim()
-    });
-    showBookingSuccess(d, booking);
+
+    const finalize = () => {
+      const user = NAXOSH.getUser();
+      const dt = new Date(today.getTime() + chosenDay * 86400000);
+      const dayLabel = chosenDay === 0 ? "ئەمڕۆ" : dayNames[dt.getDay()];
+      const booking = saveBooking({
+        doctorId: d.id, doctorName: d.name, doctorTitle: d.title,
+        spec: d.spec, price: d.price,
+        day: `${dayLabel} ${toKurdishDigits(dt.getDate())}`,
+        time: chosenSlot,
+        symptoms: document.getElementById("symptoms").value.trim(),
+        userName: user ? user.name : "",
+        userPhone: user ? user.phone : ""
+      });
+      showBookingSuccess(d, booking);
+    };
+
+    // پێش تۆمارکردنی کۆتایی، پێویستە بەکارهێنەر ناو و ژمارەی بنووسێت
+    if (!NAXOSH.getUser()) { openAuthModal(finalize); return; }
+    finalize();
   });
 }
 
@@ -381,6 +465,15 @@ function initSpecialties() {
 /* ---------- پەیجی سەرەتا (index.html) ---------- */
 
 function initHome() {
+  // دەقەکانی هیرۆ لە STR.home ـەوە (دەکرێت لە داشبۆردەوە بگۆڕدرێن)
+  const setText = (id, val) => { const n = document.getElementById(id); if (n && val) n.textContent = val; };
+  if (STR.home) {
+    setText("hero-title", STR.home.heroTitle);
+    setText("hero-lead", STR.home.heroLead);
+    setText("hero-cta", STR.home.heroCta);
+    setText("hero-scroll", STR.home.heroScroll);
+  }
+
   const grid = document.getElementById("home-spec-grid");
   if (grid) {
     grid.innerHTML = SPECIALTIES.map(s => `

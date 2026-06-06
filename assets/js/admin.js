@@ -32,21 +32,36 @@
 
   /* ---------- چوونەژوورەوە ---------- */
   function renderLogin() {
+    const online = window.NAXOSH_DB && NAXOSH_DB.active;
     root.innerHTML = `
       <div class="container">
         <div class="adm-login">
           <div class="hero-logo adm-login-logo">🛠️</div>
           <h1>${STR.admin.loginTitle}</h1>
+          ${online ? `<label>${STR.admin.email}</label>
+          <input type="email" id="adm-email" dir="ltr" autocomplete="username">` : ``}
           <label>${STR.admin.password}</label>
           <input type="password" id="adm-pw" dir="ltr" autocomplete="current-password">
           <p class="auth-err" id="adm-err"></p>
           <button class="btn btn-primary btn-block" id="adm-enter">${STR.admin.enter}</button>
         </div>
       </div>`;
+    const setErr = m => { root.querySelector("#adm-err").textContent = m; };
     const go = () => {
       const pw = root.querySelector("#adm-pw").value;
-      if (NAXOSH.adminLogin(pw)) { renderPanel(); renderChrome("admin"); }
-      else root.querySelector("#adm-err").textContent = STR.admin.wrongPw;
+      if (online) {
+        const email = root.querySelector("#adm-email").value;
+        const btn = root.querySelector("#adm-enter");
+        btn.disabled = true; setErr("");
+        NAXOSH_DB.adminSignIn(email, pw).then(ok => {
+          btn.disabled = false;
+          if (ok) { renderPanel(); renderChrome("admin"); }
+          else setErr(STR.admin.wrongPw);
+        });
+      } else {
+        if (NAXOSH.adminLogin(pw)) { renderPanel(); renderChrome("admin"); }
+        else setErr(STR.admin.wrongPw);
+      }
     };
     root.querySelector("#adm-enter").addEventListener("click", go);
     root.querySelector("#adm-pw").addEventListener("keydown", e => { if (e.key === "Enter") go(); });
@@ -91,7 +106,9 @@
     });
 
     root.querySelector("#adm-save").addEventListener("click", () => { NAXOSH.saveContent(content); content = NAXOSH.snapshot(); flash(STR.admin.saved); });
-    root.querySelector("#adm-logout").addEventListener("click", () => { NAXOSH.adminLogout(); location.href = "index.html"; });
+    root.querySelector("#adm-logout").addEventListener("click", () => {
+      Promise.resolve(NAXOSH.adminLogout()).then(() => { location.href = "index.html"; });
+    });
     root.querySelector("#adm-export").addEventListener("click", exportContent);
     root.querySelector("#adm-import").addEventListener("click", () => root.querySelector("#adm-file").click());
     root.querySelector("#adm-file").addEventListener("change", importContent);
@@ -310,8 +327,10 @@
     box.innerHTML = `
       <div class="adm-section">
         <h3>${STR.admin.changePw}</h3>
-        <p class="muted">وشەی نهێنیی ئێستا تەنها لەسەر ئەم وێبگەڕە کاردەکات. ئەمە پاراستنی ڕاستەقینە نییە.</p>
-        <label class="adm-field">${STR.admin.newPw}<input type="text" id="new-pw" dir="ltr"></label>
+        <p class="muted">${(window.NAXOSH_DB && NAXOSH_DB.active)
+          ? "ئەمە وشەی نهێنیی هەژماری ڕاستەقینەی بەڕێوەبەر دەگۆڕێت (لانیکەم ٦ پیت)."
+          : "وشەی نهێنیی ئێستا تەنها لەسەر ئەم وێبگەڕە کاردەکات. ئەمە پاراستنی ڕاستەقینە نییە."}</p>
+        <label class="adm-field">${STR.admin.newPw}<input type="password" id="new-pw" dir="ltr"></label>
         <button class="btn btn-primary btn-sm" id="save-pw">${STR.admin.changePw}</button>
       </div>
       <div class="adm-section">
@@ -324,8 +343,13 @@
       </div>`;
     box.querySelector("#save-pw").addEventListener("click", () => {
       const pw = box.querySelector("#new-pw").value.trim();
-      if (pw.length < 4) { alert("وشەی نهێنی پێویستە لانیکەم ٤ پیت بێت."); return; }
-      NAXOSH.setAdminPw(pw); box.querySelector("#new-pw").value = ""; flash(STR.admin.pwChanged);
+      if (pw.length < 6) { alert("وشەی نهێنی پێویستە لانیکەم ٦ پیت بێت."); return; }
+      Promise.resolve(NAXOSH.setAdminPw(pw)).then(() => {
+        box.querySelector("#new-pw").value = ""; flash(STR.admin.pwChanged);
+      }).catch(err => {
+        // Firebase داوای چوونەژوورەوەی نوێ دەکات ئەگەر ماوەیەک تێپەڕیبێت
+        alert("نەتوانرا وشەی نهێنی بگۆڕدرێت. تکایە بچۆ دەرەوە و دووبارە بچۆ ژوورەوە، پاشان هەوڵ بدەرەوە.\n(" + (err.code || err.message || err) + ")");
+      });
     });
     box.querySelector("#set-export").addEventListener("click", exportContent);
     box.querySelector("#set-reset").addEventListener("click", () => {
@@ -361,6 +385,13 @@
   /* ---------- نوێکردنەوەی خۆکار کاتێک تۆمارکردن لە هەورەوە دەگۆڕێت ---------- */
   document.addEventListener("naxosh:bookings", () => {
     if (NAXOSH.isAdmin() && activeTab === "bookings") renderTab();
+  });
+
+  /* ---------- گۆڕانی دۆخی ناسنامە (دانیشتنی پارێزراو یان چوونەدەرەوە) ---------- */
+  document.addEventListener("naxosh:auth", () => {
+    const panelShown = !!document.getElementById("adm-save");
+    if (NAXOSH.isAdmin() && !panelShown) { renderPanel(); renderChrome("admin"); }
+    else if (!NAXOSH.isAdmin() && panelShown) { renderLogin(); }
   });
 
   /* ---------- دەستپێک ---------- */

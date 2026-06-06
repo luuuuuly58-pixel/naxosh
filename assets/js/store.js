@@ -71,18 +71,30 @@ const NAXOSH = (function () {
   }
   function resetContent() { localStorage.removeItem(LS.content); }
 
-  /* ---------- بەڕێوەبەر ---------- */
+  /* ---------- بەڕێوەبەر ----------
+     ئۆنلاین (Firebase): بەڕێوەبەر بە ئیمەیڵ + وشەی نهێنیی ڕاستەقینە.
+     ئۆفلاین (بێ Firebase): وشەی نهێنیی سادە لە localStorage (وەک جاران). */
+  function online() { return window.NAXOSH_DB && NAXOSH_DB.active; }
+
   function adminPw() { return localStorage.getItem(LS.adminPw) || DEFAULT_ADMIN_PW; }
   function setAdminPw(pw) {
+    if (online()) return NAXOSH_DB.changeAdminPassword(pw);   // وشەی هەژماری ڕاستەقینە دەگۆڕێت
     localStorage.setItem(LS.adminPw, pw);
-    if (window.NAXOSH_DB && NAXOSH_DB.active) NAXOSH_DB.pushSettings({ adminPw: pw });
+    return Promise.resolve();
   }
-  function isAdmin() { return localStorage.getItem(LS.admin) === "1"; }
-  function adminLogin(pw) {
+  function isAdmin() {
+    if (online()) return NAXOSH_DB.isAdmin();
+    return localStorage.getItem(LS.admin) === "1";
+  }
+  function adminLogin(pw) {   // تەنها ئۆفلاین — ئۆنلاین adminSignIn(email, pw) بەکاردێت
     if (pw === adminPw()) { localStorage.setItem(LS.admin, "1"); return true; }
     return false;
   }
-  function adminLogout() { localStorage.removeItem(LS.admin); }
+  function adminLogout() {
+    if (online()) return NAXOSH_DB.signOutAdmin();
+    localStorage.removeItem(LS.admin);
+    return Promise.resolve();
+  }
 
   /* ---------- بەکارهێنەر ---------- */
   function getUser() {

@@ -359,7 +359,7 @@ function initChat() {
     `${avatar(d.name, 44)}<div><strong>${d.name}</strong><span class="muted">${d.title} • ئۆنلاین 🟢</span></div>`;
 
   const online = window.NAXOSH_DB && NAXOSH_DB.active;
-  const thread = clientUid() + "_" + d.id;
+  let thread = online ? null : (clientUid() + "_" + d.id);
   let messages = online ? [] : getChat(d.id);
   let seeded = false;
 
@@ -378,7 +378,7 @@ function initChat() {
 
   // ناردنی نامە — بۆ هەور ئەگەر بەردەست بێت، ئەگەرنا بۆ localStorage
   function push(msg) {
-    if (online) { NAXOSH_DB.sendChat(thread, msg); }
+    if (online) { if (thread) NAXOSH_DB.sendChat(thread, msg); }
     else { messages.push(msg); saveChat(d.id, messages); paint(); }
   }
 
@@ -390,11 +390,15 @@ function initChat() {
   }
 
   if (online) {
-    // هاوکات: هەر گۆڕانێک لە هەور یەکسەر دەردەکەوێت
-    NAXOSH_DB.watchChat(thread, msgs => {
-      messages = msgs;
-      paint();
-      seedGreeting();
+    // چاوەڕێی ناسنامەی نهێنی بکە، پاشان زنجیرەی گفتوگۆ بە ناسنامەکەوە ببەستە
+    NAXOSH_DB.whenReady(uid => {
+      thread = uid + "_" + d.id;
+      // هاوکات: هەر گۆڕانێک لە هەور یەکسەر دەردەکەوێت
+      NAXOSH_DB.watchChat(thread, msgs => {
+        messages = msgs;
+        paint();
+        seedGreeting();
+      });
     });
   } else {
     messages = getChat(d.id);
@@ -543,4 +547,6 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("naxosh:bookings", () => {
     if (page === "appointments") initAppointments();
   });
+  // کاتێک دۆخی ناسنامە دەگۆڕێت (چوونەژوورەوەی نهێنی/بەڕێوەبەر) — مینۆ نوێ بکەرەوە
+  document.addEventListener("naxosh:auth", () => renderChrome(page));
 });

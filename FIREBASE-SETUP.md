@@ -1,51 +1,50 @@
-# ڕێکخستنی Firebase — کۆگای هاوبەش + پاراستن بۆ نەخۆش
-### (Shared cloud database + security for Naxoş)
+# Firebase Setup — Shared Cloud Database + Security for Naxoş
 
-ئەمە تەنها **جارێک** دەیکەیت. دوای ئەوە:
-- هەموو بەکارهێنەران هەمان زانیاری دەبینن (تۆمارکردن، گۆڕانکاری، گفتوگۆ).
-- داتابەیس **داخراوە** — کەسی دەرەکی ناتوانێت زانیارییەکان ببینێت یان بسڕێتەوە.
-- هەر نەخۆشێک تەنها زانیاری **خۆی** دەبینێت؛ تەنها **بەڕێوەبەر** هەمووی دەبینێت.
-- نەخۆش پێویست ناکات هیچ هەژمارێک دروست بکات — تەنها لە کاتی تۆمارکردنی کۆتاییدا
-  ناو و ژمارەی دەنووسێت (وەک جاران).
+You do this **once**. After it's done:
+- All users see the same data (bookings, admin edits, chats).
+- The database is **locked** — outsiders can't read or delete your data.
+- Each patient sees only **their own** data; only the **admin** sees everything.
+- Patients don't create an account — they just enter their name and phone at the
+  final booking step (same as before).
 
-> ⚠️ هەتا ئەم هەنگاوانە تەواو نەکەیت، ماڵپەڕ وەک خۆی کاردەکات — بەڵام زانیاری
-> تەنها لەسەر هەمان وێبگەڕ هەڵدەگیرێت. هیچ شتێک ناشکێت.
+> ⚠️ Until you finish these steps, the site still works — but data is saved only in
+> each person's own browser. Nothing breaks in the meantime.
 
-ھەموو ئەمە **بەخۆڕاییە** و پێویستی بە کارتی بانک نییە.
+All of this is **free** and needs **no credit card**.
 
 ---
 
-## هەنگاو ١ — دروستکردنی پڕۆژە
-1. بڕۆ بۆ **https://console.firebase.google.com** و بە هەژماری Google بچۆ ژوورەوە.
-   (دەتوانیت هەر هەژمارێکی Google بەکاربهێنیت — ئەو هەژمارە دەبێتە خاوەنی داتابەیسەکە.)
-2. کلیک لە **Add project** ← ناوێک بنووسە (بۆ نموونە `naxosh`) ← **Continue**.
-3. ئەگەر پرسیاری Google Analytics کرد، بیکوژێنیتەوە ← **Create project** ← **Continue**.
+## Step 1 — Create the project
+1. Go to **https://console.firebase.google.com** and sign in with a Google account.
+   (Any Google account works — that account becomes the owner of the database.)
+2. Click **Add project** → enter a name (e.g. `naxosh`) → **Continue**.
+3. If it asks about Google Analytics, you can turn it off → **Create project** → **Continue**.
 
-## هەنگاو ٢ — کردنەوەی داتابەیس (Firestore)
-1. لای چەپ: **Build → Firestore Database** ← **Create database**.
-2. **Production mode** ← **Next**.
-3. شوێنێکی نزیک هەڵبژێرە (بۆ نموونە `eur3`) ← **Enable**.
+## Step 2 — Turn on the database (Firestore)
+1. Left menu: **Build → Firestore Database** → **Create database**.
+2. Choose **Production mode** → **Next**.
+3. Pick a location near you (e.g. `eur3`) → **Enable**.
 
-## هەنگاو ٣ — چالاککردنی پاراستن (Authentication)
-1. لای چەپ: **Build → Authentication** ← **Get started**.
-2. تابی **Sign-in method**.
-3. **دوو** شێواز چالاک بکە:
-   - **Anonymous** ← کلیکی بکە ← **Enable** ← **Save**.
-     *(ئەمە بۆ نەخۆشانە — ناسنامەیەکی نهێنیی خۆکاریان دەداتێ.)*
-   - **Email/Password** ← کلیکی بکە ← **Enable** ← **Save**.
-     *(ئەمە بۆ بەڕێوەبەرە.)*
+## Step 3 — Turn on Authentication
+1. Left menu: **Build → Authentication** → **Get started**.
+2. Open the **Sign-in method** tab.
+3. Enable **two** providers:
+   - **Anonymous** → click it → **Enable** → **Save**
+     *(this gives each patient a silent automatic identity)*
+   - **Email/Password** → click it → **Enable** → **Save**
+     *(this is for the admin)*
 
-## هەنگاو ٤ — دروستکردنی هەژماری بەڕێوەبەر
-1. لە **Authentication**، تابی **Users** ← **Add user**.
-2. ئیمەیڵێک بنووسە (بۆ نموونە `admin@naxosh.com` — پێویست نییە ئیمەیڵی ڕاستەقینە بێت)
-   و وشەیەکی نهێنی (لانیکەم ٦ پیت).
-3. **Add user**.
-   👈 ئەمە ئەو ئیمەیڵ و وشەیەیە کە بۆ چوونەژوورەوەی داشبۆردی بەڕێوەبەر (`admin.html`)
-   بەکاری دەهێنیت. وشەی نهێنیی کۆنی `naxosh2026` چیتر کارناکات.
+## Step 4 — Create the admin account
+1. In **Authentication**, open the **Users** tab → **Add user**.
+2. Enter an email (e.g. `admin@naxosh.com` — it doesn't have to be a real inbox)
+   and a password (at least 6 characters).
+3. Click **Add user**.
+   👉 This email + password is what you'll use to log into the admin dashboard
+   (`admin.html`). The old `naxosh2026` password no longer works.
 
-## هەنگاو ٥ — ڕێسا داخراوەکان دابنێ (Rules)
-1. بڕۆ بۆ **Firestore Database → Rules**.
-2. هەموو دەقەکە بسڕەوە و ئەمەی خوارەوە لەجێیدا دابنێ:
+## Step 5 — Set the locked-down rules
+1. Go to **Firestore Database → Rules**.
+2. Delete everything and paste this instead:
 
 ```
 rules_version = '2';
@@ -55,13 +54,13 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function isAdmin()  { return signedIn() && request.auth.token.firebase.sign_in_provider == 'password'; }
 
-    // ناوەڕۆکی ماڵپەڕ: هەرکەسێکی چووەژوورەوە دەیخوێنێتەوە، تەنها بەڕێوەبەر دەیگۆڕێت
+    // Site content: any signed-in visitor can read; only the admin can change it
     match /site/{doc} {
       allow read:  if signedIn();
       allow write: if isAdmin();
     }
 
-    // تۆمارکردن: هەر نەخۆش تەنها هی خۆی؛ بەڕێوەبەر هەمووی
+    // Bookings: each patient only their own; admin sees all
     match /bookings/{id} {
       allow read, delete: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
       allow create:       if isAdmin() || (signedIn() && request.resource.data.ownerUid == request.auth.uid);
@@ -69,13 +68,13 @@ service cloud.firestore {
                                                       && request.resource.data.ownerUid == request.auth.uid);
     }
 
-    // هەژماری بەکارهێنەر: هەرکەس تەنها هی خۆی؛ بەڕێوەبەر دەیانخوێنێتەوە
+    // User profiles: each person only their own; admin can read all
     match /users/{uid} {
       allow read:  if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow write: if signedIn() && request.auth.uid == uid;
     }
 
-    // گفتوگۆ: تەنها خاوەنی زنجیرەکە + بەڕێوەبەر
+    // Chats: only the thread owner + the admin
     match /chats/{thread} {
       allow read, write: if isAdmin() || (signedIn() && thread.split('_')[0] == request.auth.uid);
       match /messages/{m} {
@@ -86,13 +85,13 @@ service cloud.firestore {
 }
 ```
 
-3. کلیک **Publish**. ئەو ئاگادارییە سووورە (public) نامێنێت ✓
+3. Click **Publish**. The red "public" warning will go away ✓
 
-## هەنگاو ٦ — کلیلەکان وەربگرە
-1. کلیک لە **⚙ (Project settings)** لای سەرەوەی چەپ.
-2. بەرەو خوارەوە بۆ **Your apps** ← کلیک لە ئایکۆنی **`</>`** (Web).
-3. نازناوێک بنووسە (`naxosh-web`) ← **Register app**.
-4. ئەو کۆدەی دەردەکەوێت، تەنها بەشی `firebaseConfig` کۆپی بکە:
+## Step 6 — Get your keys
+1. Click the **⚙ (Project settings)** gear at the top-left.
+2. Scroll to **Your apps** → click the **`</>`** (Web) icon.
+3. Enter a nickname (`naxosh-web`) → **Register app**.
+4. It shows a code block — copy just the `firebaseConfig` values:
 
 ```js
 const firebaseConfig = {
@@ -105,34 +104,34 @@ const firebaseConfig = {
 };
 ```
 
-## هەنگاو ٧ — کلیلەکان دابنێ لە فایلەکە
-1. فایلی **`assets/js/firebase-config.js`** بکەرەوە.
-2. شوێنی نرخە `PASTE_...`ـەکان، نرخە ڕاستەقینەکانی خۆت دابنێ.
-3. پاشەکەوتی بکە.
+## Step 7 — Paste the keys into the file
+1. Open **`assets/js/firebase-config.js`**.
+2. Replace each `PASTE_...` value with your real values.
+3. Save.
 
-## هەنگاو ٨ — بڵاوکردنەوە و تاقیکردنەوە
-- ماڵپەڕەکە دووبارە بڵاوبکەرەوە (Netlify Drop یان GitHub Pages).
-- لە **Console**ـی وێبگەڕ دەبێت ببینیت:
+## Step 8 — Publish and test
+- Re-publish the site (Netlify Drop or GitHub Pages).
+- In the browser **Console** you should see:
   `[naxosh] Firebase چالاکە — کۆگای هاوبەش + پاراستن کاردەکات ✓`
-- بڕۆ بۆ `admin.html` ← بە ئیمەیڵ و وشەی نهێنیی هەنگاو ٤ بچۆ ژوورەوە.
-- لە ئامێرێکی تر تۆمارکردنێک بکە ← لە داشبۆردی بەڕێوەبەر دەبێت دەربکەوێت.
+- Go to `admin.html` → log in with the email + password from Step 4.
+- Make a booking on another device → it should appear in the admin dashboard.
 
 ---
 
-## تێبینی گرنگ / Notes
-- **وشەی نهێنیی بەڕێوەبەر** ئێستا لە تابی Settings ـی داشبۆردەوە دەگۆڕدرێت — ئەمە وشەی
-  نهێنیی هەژمارە ڕاستەقینەکە دەگۆڕێت. (ئەگەر کێشەی هەبوو، بچۆ دەرەوە، دووبارە بچۆ ژوورەوە و هەوڵبدەرەوە.)
-- **هەر تۆمارکردنێکی کۆن** کە پێش ئەم ڕێکخستنە دروستکرابێت، ڕەنگە بۆ نەخۆش دیار نەبێت
-  (چونکە ناسنامەی پێوە نییە) — بەڵام بەڕێوەبەر هەمووی دەبینێت.
-- **ئاستی پاراستن:** ئەمە پاراستنێکی باشە بۆ دیمۆ/پڕۆژەی بچووک. کەسی دەرەکی ناتوانێت
-  زانیاری ببینێت یان بسڕێتەوە. بۆ خزمەتگوزاری پزیشکی ڕاستەقینەی گەورە، دواتر پێداچوونەوەی
-  پسپۆڕی پاراستن پێویستە.
+## Notes
+- **The admin password** is now changed from the dashboard's Settings tab — that
+  changes the real account password. (If it errors, log out, log back in, and retry.)
+- **Any bookings created before this setup** may not show for patients (they have no
+  identity attached) — but the admin still sees all of them.
+- **Security level:** this is good protection for a demo / small project. Outsiders
+  can't read or delete your data. A real, large-scale medical service would later
+  need a professional security review.
 
-## ئەو زانیارییانەی هەڵدەگیرێن / What gets stored
-| لە هەوردا (Firestore) | چی تێدایە |
+## What gets stored
+| In the cloud (Firestore) | Contents |
 |---|---|
-| `site/content` | هەموو دەق و پزیشک و کاتەکان (دەستکاریی بەڕێوەبەر) |
-| `site/settings` | ڕێکخستنەکان |
-| `bookings/…` | تۆمارکردنەکان (هەرکام `ownerUid`ی خاوەنەکەی پێوەیە) |
-| `users/…` | ناو و ژمارەی بەکارهێنەران |
-| `chats/…/messages/…` | نامەکانی گفتوگۆ |
+| `site/content` | All texts, doctors, and time slots (admin edits) |
+| `site/settings` | Settings |
+| `bookings/…` | Bookings (each tagged with its owner's `ownerUid`) |
+| `users/…` | User names and phone numbers |
+| `chats/…/messages/…` | Chat messages |

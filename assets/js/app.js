@@ -49,15 +49,19 @@ function getBookings() {
 }
 function saveBooking(b) {
   const list = getBookings();
-  b.id = Date.now();
+  b.id = String(Date.now()) + "_" + Math.random().toString(36).slice(2, 7);
+  b.createdAt = Date.now();
   b.status = "چاوەڕوان";
   list.push(b);
   localStorage.setItem("naxosh_bookings", JSON.stringify(list));
+  if (window.NAXOSH_DB && NAXOSH_DB.active) NAXOSH_DB.pushBooking(b);
   return b;
 }
 function cancelBooking(id) {
-  const list = getBookings().filter(b => b.id !== id);
+  id = String(id);
+  const list = getBookings().filter(b => String(b.id) !== id);
   localStorage.setItem("naxosh_bookings", JSON.stringify(list));
+  if (window.NAXOSH_DB && NAXOSH_DB.active) NAXOSH_DB.removeBooking(id);
 }
 
 function getChat(doctorId) {
@@ -339,6 +343,13 @@ function showBookingSuccess(d, booking) {
 
 /* ---------- پەیجی گفتوگۆ (chat.html) ---------- */
 
+/* ناسنامەیەکی نەگۆڕ بۆ ئەم وێبگەڕە — بۆ دیاریکردنی زنجیرەی گفتوگۆ */
+function clientUid() {
+  let id = localStorage.getItem("naxosh_uid");
+  if (!id) { id = "u" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); localStorage.setItem("naxosh_uid", id); }
+  return id;
+}
+
 function initChat() {
   const box = document.getElementById("chat-box");
   if (!box) return;
@@ -347,8 +358,14 @@ function initChat() {
   document.getElementById("chat-doctor").innerHTML =
     `${avatar(d.name, 44)}<div><strong>${d.name}</strong><span class="muted">${d.title} • ئۆنلاین 🟢</span></div>`;
 
-  let messages = getChat(d.id);
-  let replyIndex = 0;
+  const online = window.NAXOSH_DB && NAXOSH_DB.active;
+  const thread = clientUid() + "_" + d.id;
+  let messages = online ? [] : getChat(d.id);
+  let seeded = false;
+
+  function replyIndex() {
+    return Math.min(messages.filter(m => m.from === "doc").length, CHAT_REPLIES.length - 1);
+  }
 
   function paint() {
     box.innerHTML = messages.map(m =>
@@ -359,15 +376,31 @@ function initChat() {
     box.scrollTop = box.scrollHeight;
   }
 
-  // ئەگەر یەکەم جارە، پزیشک سڵاو دەکات
-  if (messages.length === 0) {
-    messages.push({ from: "doc", text: CHAT_REPLIES[0], time: nowTime() });
-    replyIndex = 1;
-    saveChat(d.id, messages);
-  } else {
-    replyIndex = Math.min(messages.filter(m => m.from === "doc").length, CHAT_REPLIES.length - 1);
+  // ناردنی نامە — بۆ هەور ئەگەر بەردەست بێت، ئەگەرنا بۆ localStorage
+  function push(msg) {
+    if (online) { NAXOSH_DB.sendChat(thread, msg); }
+    else { messages.push(msg); saveChat(d.id, messages); paint(); }
   }
-  paint();
+
+  // پزیشک سڵاو دەکات ئەگەر گفتوگۆکە بەتاڵ بێت (تەنها جارێک)
+  function seedGreeting() {
+    if (seeded || messages.length) return;
+    seeded = true;
+    push({ from: "doc", text: CHAT_REPLIES[0], time: nowTime() });
+  }
+
+  if (online) {
+    // هاوکات: هەر گۆڕانێک لە هەور یەکسەر دەردەکەوێت
+    NAXOSH_DB.watchChat(thread, msgs => {
+      messages = msgs;
+      paint();
+      seedGreeting();
+    });
+  } else {
+    messages = getChat(d.id);
+    seedGreeting();
+    paint();
+  }
 
   const input = document.getElementById("chat-input");
   const form = document.getElementById("chat-form");
@@ -375,20 +408,15 @@ function initChat() {
     e.preventDefault();
     const text = input.value.trim();
     if (!text) return;
-    messages.push({ from: "me", text, time: nowTime() });
     input.value = "";
-    saveChat(d.id, messages);
-    paint();
+    push({ from: "me", text, time: nowTime() });
 
-    // وەڵامی پزیشک بە دواکەوتنێکی کەم
+    // وەڵامی پزیشک بە دواکەوتنێکی کەم (نموونەیی — دواتر دەکرێت بە پزیشکی ڕاستەقینە بگۆڕدرێت)
+    const ri = replyIndex();
     const typing = el(`<div class="msg msg-doc">${avatar(d.name, 32)}<div class="bubble typing">●●●</div></div>`);
     box.appendChild(typing); box.scrollTop = box.scrollHeight;
     setTimeout(() => {
-      const reply = CHAT_REPLIES[Math.min(replyIndex, CHAT_REPLIES.length - 1)];
-      replyIndex++;
-      messages.push({ from: "doc", text: reply, time: nowTime() });
-      saveChat(d.id, messages);
-      paint();
+      push({ from: "doc", text: CHAT_REPLIES[Math.min(ri, CHAT_REPLIES.length - 1)], time: nowTime() });
     }, 1100);
   });
 }
@@ -436,7 +464,7 @@ function initAppointments() {
     const btn = e.target.closest("[data-cancel]");
     if (!btn) return;
     if (confirm("دڵنیایت لە هەڵوەشاندنەوەی ئەم چاوپێکەوتنە؟")) {
-      cancelBooking(Number(btn.dataset.cancel));
+      cancelBooking(btn.dataset.cancel);
       initAppointments();
     }
   });
@@ -493,13 +521,26 @@ function initHome() {
 
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.body.dataset.page;
-  renderChrome(page);
-  ({
+  const initFn = {
     home: initHome,
     specialties: initSpecialties,
     doctors: initDoctors,
     doctor: initDoctorProfile,
     chat: initChat,
     appointments: initAppointments
-  }[page] || (() => {}))();
+  }[page] || (() => {});
+
+  renderChrome(page);
+  initFn();
+
+  // کاتێک ناوەڕۆکی نوێ لە هەورەوە دێت — مینۆ و پەڕە نوێ بکەرەوە
+  // (گفتوگۆ نا، چونکە خۆی هاوکاتە؛ تۆمارکردنیش جیا مامەڵەی لەگەڵ دەکرێت)
+  document.addEventListener("naxosh:content", () => {
+    renderChrome(page);
+    if (page !== "chat" && page !== "appointments") initFn();
+  });
+  // کاتێک تۆمارکردنەکان دەگۆڕێن، تەنها پەڕەی چاوپێکەوتنەکان نوێ بکەرەوە
+  document.addEventListener("naxosh:bookings", () => {
+    if (page === "appointments") initAppointments();
+  });
 });

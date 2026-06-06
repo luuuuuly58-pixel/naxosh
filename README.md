@@ -2,7 +2,9 @@
 
 A clickable demo of an online doctor / telemedicine service for a **Kurdish Sorani** audience, inspired by Doctor on Demand. Fully right-to-left, no build tools, no server required.
 
-> ⚠️ This is a **demo/prototype** — it does not provide real medical care, real video, or real payments. Bookings and chat are saved only in your own browser (localStorage).
+> ⚠️ This is a **demo/prototype** — it does not provide real medical care, real video, or real payments.
+
+**Storage:** by default bookings/chat are saved only in your own browser (localStorage). To make them **shared across all visitors** (so the doctor sees every patient's bookings and chats), connect a free Firebase database — see **[FIREBASE-SETUP.md](FIREBASE-SETUP.md)** for click-by-click steps. Until you do that, the site works exactly as before.
 
 ## چۆن بیکەیتەوە / How to run
 

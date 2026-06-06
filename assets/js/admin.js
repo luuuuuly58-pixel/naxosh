@@ -72,7 +72,9 @@
             <button class="btn btn-ghost btn-sm" id="adm-logout">${STR.admin.logout}</button>
           </div>
         </div>
-        <p class="adm-hint">گۆڕانکارییەکان لەسەر هەمان وێبگەڕ هەڵدەگیرێن. بۆ بینینیان لەلایەن هەمووانەوە، فایلی ناوەڕۆک هەناردە بکە و دووبارە بڵاوبکەرەوە.</p>
+        <p class="adm-hint">${(window.NAXOSH_DB && NAXOSH_DB.active)
+          ? "گۆڕانکارییەکان لە هەور (cloud) هەڵدەگیرێن — هەموو بەکارهێنەران یەکسەر دەیانبینن ✓"
+          : "گۆڕانکارییەکان لەسەر هەمان وێبگەڕ هەڵدەگیرێن. بۆ بینینیان لەلایەن هەمووانەوە، فایلی ناوەڕۆک هەناردە بکە و دووبارە بڵاوبکەرەوە."}</p>
         <div class="adm-tabs">
           ${tabs.map(([id, label]) => `<button class="adm-tab-btn ${id === activeTab ? "active" : ""}" data-tab="${id}">${label}</button>`).join("")}
         </div>
@@ -299,7 +301,7 @@
       </div>`).join("");
     box.addEventListener("click", e => {
       const del = e.target.closest(".adm-bk-del"); if (!del) return;
-      if (confirm("ئەم تۆمارکردنە بسڕێتەوە؟")) { cancelBooking(Number(del.dataset.id)); renderTab(); }
+      if (confirm("ئەم تۆمارکردنە بسڕێتەوە؟")) { cancelBooking(del.dataset.id); renderTab(); }
     });
   }
 
@@ -355,6 +357,11 @@
     reader.readAsText(file);
     e.target.value = "";
   }
+
+  /* ---------- نوێکردنەوەی خۆکار کاتێک تۆمارکردن لە هەورەوە دەگۆڕێت ---------- */
+  document.addEventListener("naxosh:bookings", () => {
+    if (NAXOSH.isAdmin() && activeTab === "bookings") renderTab();
+  });
 
   /* ---------- دەستپێک ---------- */
   document.addEventListener("DOMContentLoaded", () => {

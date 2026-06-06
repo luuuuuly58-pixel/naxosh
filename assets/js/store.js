@@ -67,12 +67,16 @@ const NAXOSH = (function () {
   function saveContent(c) {
     localStorage.setItem(LS.content, JSON.stringify(c));
     applyContent(c);
+    if (window.NAXOSH_DB && NAXOSH_DB.active) NAXOSH_DB.pushContent(c);
   }
   function resetContent() { localStorage.removeItem(LS.content); }
 
   /* ---------- بەڕێوەبەر ---------- */
   function adminPw() { return localStorage.getItem(LS.adminPw) || DEFAULT_ADMIN_PW; }
-  function setAdminPw(pw) { localStorage.setItem(LS.adminPw, pw); }
+  function setAdminPw(pw) {
+    localStorage.setItem(LS.adminPw, pw);
+    if (window.NAXOSH_DB && NAXOSH_DB.active) NAXOSH_DB.pushSettings({ adminPw: pw });
+  }
   function isAdmin() { return localStorage.getItem(LS.admin) === "1"; }
   function adminLogin(pw) {
     if (pw === adminPw()) { localStorage.setItem(LS.admin, "1"); return true; }
@@ -88,6 +92,7 @@ const NAXOSH = (function () {
   function userLogin(name, phone) {
     const u = { name: (name || "").trim(), phone: (phone || "").trim() };
     localStorage.setItem(LS.user, JSON.stringify(u));
+    if (window.NAXOSH_DB && NAXOSH_DB.active) NAXOSH_DB.pushUser(u);
     return u;
   }
   function userLogout() { localStorage.removeItem(LS.user); }

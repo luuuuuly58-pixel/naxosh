@@ -12,13 +12,17 @@
    ============================================================ */
 
 window.NAXOSH_FIREBASE = {
-  apiKey:            "PASTE_API_KEY",
-  authDomain:        "PASTE_PROJECT.firebaseapp.com",
-  projectId:         "PASTE_PROJECT_ID",
-  storageBucket:     "PASTE_PROJECT.appspot.com",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId:             "PASTE_APP_ID"
+  apiKey:            "AIzaSyAKBZyNXZPjNw7Ql9D0IXVGggACGlm0D1M",
+  authDomain:        "naxosh.firebaseapp.com",
+  projectId:         "naxosh",
+  storageBucket:     "naxosh.firebasestorage.app",
+  messagingSenderId: "542156255134",
+  appId:             "1:542156255134:web:afad36c3106a861591b08f",
+  measurementId:     "G-7ZQ91F3QTG"
 };
+
+
+
 
 /* ئایا کلیلەکان بەڕاستی دانراون؟ (بۆ ناوخۆ بەکاردێت — دەستکاری مەکە) */
 window.NAXOSH_FIREBASE_READY =

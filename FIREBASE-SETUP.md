@@ -52,7 +52,22 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
-    function isAdmin()  { return signedIn() && request.auth.token.firebase.sign_in_provider == 'password'; }
+
+    // A "doctor" is an email/password account listed in doctorAccounts
+    // (the admin creates those from the dashboard's Doctors tab).
+    function isDoctor() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/doctorAccounts/$(request.auth.uid));
+    }
+    function docId() {
+      return get(/databases/$(database)/documents/doctorAccounts/$(request.auth.uid)).data.doctorId;
+    }
+    // The admin is an email/password account that is NOT a doctor.
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && !isDoctor();
+    }
 
     // Site content: any signed-in visitor can read; only the admin can change it
     match /site/{doc} {
@@ -60,12 +75,30 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Bookings: each patient only their own; admin sees all
+    // Doctor login accounts: maps a login to a doctor profile (admin manages)
+    match /doctorAccounts/{uid} {
+      allow read:  if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow write: if isAdmin();
+    }
+
+    // Doctor schedules (working days + times): everyone can read,
+    // only the admin or that doctor can change them
+    match /doctorSettings/{id} {
+      allow read:           if signedIn();
+      allow create, update: if isAdmin() || (isDoctor() && request.resource.data.doctorId == docId());
+      allow delete:         if isAdmin();
+    }
+
+    // Bookings: patient sees own; doctor sees their patients'; admin sees all
     match /bookings/{id} {
-      allow read, delete: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
-      allow create:       if isAdmin() || (signedIn() && request.resource.data.ownerUid == request.auth.uid);
-      allow update:       if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid
-                                                      && request.resource.data.ownerUid == request.auth.uid);
+      allow read, delete: if isAdmin()
+        || (isDoctor() && resource.data.doctorId == docId())
+        || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isAdmin() || (signedIn() && request.resource.data.ownerUid == request.auth.uid);
+      allow update: if isAdmin()
+        || (isDoctor() && resource.data.doctorId == docId())
+        || (signedIn() && resource.data.ownerUid == request.auth.uid
+                       && request.resource.data.ownerUid == request.auth.uid);
     }
 
     // User profiles: each person only their own; admin can read all
@@ -81,7 +114,9 @@ service cloud.firestore {
       allow read:   if signedIn();
       allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
       allow update: if false;
-      allow delete: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow delete: if isAdmin()
+        || (isDoctor() && resource.data.doctorId == docId())
+        || (signedIn() && resource.data.ownerUid == request.auth.uid);
     }
 
     // Chats: only the thread owner + the admin
@@ -128,6 +163,20 @@ const firebaseConfig = {
 
 ---
 
+## Doctor accounts (doctor dashboard)
+Each doctor can have their own login and dashboard at **`doctor-panel.html`**
+(linked in the site footer as "بۆ پزیشکان"). There they see only **their own**
+bookings (patient name, phone, time, video room), can confirm bookings, edit
+their **own working days + times**, and change their password.
+
+- **Create a doctor's login:** Admin dashboard → **Doctors** tab → in the
+  doctor's card, fill **email + password** under 🔑 and click
+  **دروستکردنی هەژمار**. (The email doesn't need a real inbox.)
+- **Doctor forgot their password:** Firebase console → **Authentication →
+  Users** → delete that doctor's user → create the account again from the
+  admin dashboard with a new password.
+- Doctors change their own password from their dashboard's Settings tab.
+
 ## Notes
 - **The admin password** is now changed from the dashboard's Settings tab — that
   changes the real account password. (If it errors, log out, log back in, and retry.)
@@ -144,5 +193,7 @@ const firebaseConfig = {
 | `site/settings` | Settings |
 | `bookings/…` | Bookings (each tagged with its owner's `ownerUid`) |
 | `taken/…` | Which doctor time slots are already booked (no personal data) |
+| `doctorAccounts/…` | Which login belongs to which doctor (admin-managed) |
+| `doctorSettings/…` | Each doctor's working days + times (doctor-edited) |
 | `users/…` | User names and phone numbers |
 | `chats/…/messages/…` | Chat messages |

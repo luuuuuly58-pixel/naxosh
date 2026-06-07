@@ -384,6 +384,13 @@ textarea:focus { outline: none; border-color: var(--teal); }
 .adm-check { display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .adm-check input { width: auto; margin: 0; }
 .adm-days { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.adm-cred { border-top: 1px dashed var(--line); padding-top: 12px; margin-top: 6px; }
+.adm-cred-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.adm-cred-row input { flex: 1; min-width: 180px; }
+/* داشبۆردی پزیشک — ڕەنگی جیاواز (شین) بۆ جیاکردنەوە لە بەڕێوەبەر */
+.dr-wrap .adm-bar h1 { color: var(--blue); }
+.dr-wrap .adm-tab-btn:hover { color: var(--blue); }
+.dr-wrap .adm-tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
 .adm-day { display: flex; align-items: center; gap: 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 .adm-day input { width: auto; margin: 0; }
 

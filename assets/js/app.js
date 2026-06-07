@@ -113,6 +113,11 @@ function authArea() {
       <a href="admin.html" class="auth-chip auth-admin">🛠️ ${STR.admin.panel}</a>
       <a href="#" class="auth-logout" onclick="NAXOSH.adminLogout();location.reload();return false">${STR.auth.logout}</a>`;
   }
+  if (window.NAXOSH_DB && NAXOSH_DB.active && NAXOSH_DB.isDoctor()) {
+    return `
+      <a href="doctor-panel.html" class="auth-chip auth-admin">🩺 ${STR.dr.panel}</a>
+      <a href="#" class="auth-logout" onclick="NAXOSH_DB.signOutAdmin().then(()=>location.reload());return false">${STR.auth.logout}</a>`;
+  }
   const user = NAXOSH.getUser();
   if (user) {
     return `
@@ -156,6 +161,7 @@ function renderChrome(active) {
           <a href="specialties.html">${STR.nav.specialties}</a>
           <a href="doctors.html">${STR.nav.doctors}</a>
           <a href="appointments.html">${STR.nav.appointments}</a>
+          <a href="doctor-panel.html">${STR.footer.doctor}</a>
           <a href="admin.html">${STR.footer.admin}</a>
         </div>
       </div>

@@ -35,22 +35,46 @@ const NAXOSH = (function () {
     catch { return null; }
   }
 
+  /* ---------- خشتەی پزیشکەکان (ڕۆژ/کات کە پزیشک خۆی گۆڕیویەتی) ----------
+     لە هەورەوە دێت (doctorSettings) و بەسەر داتای پزیشکەکاندا دەخرێت. */
+  let docSettingsMap = (function () {
+    try { return JSON.parse(localStorage.getItem("naxosh_docsettings") || "{}"); }
+    catch { return {}; }
+  })();
+  function overlayDoctorSettings() {
+    if (typeof DOCTORS === "undefined") return;
+    DOCTORS.forEach(d => {
+      const s = docSettingsMap[String(d.id)];
+      if (!s) return;
+      if (Array.isArray(s.days)) d.days = s.days;
+      if (Array.isArray(s.slots) && s.slots.length) d.slots = s.slots;
+    });
+  }
+  function applyDoctorSettings(map) {
+    docSettingsMap = map || {};
+    try { localStorage.setItem("naxosh_docsettings", JSON.stringify(docSettingsMap)); } catch (_) {}
+    overlayDoctorSettings();
+  }
+
   /* جێبەجێکردنی override لەسەر گۆڕاوە جیهانییەکان (STR/DOCTORS/...) */
   function applyContent(c) {
-    if (!c) return;
-    if (c.texts && typeof STR !== "undefined") deepMerge(STR, c.texts);
-    if (Array.isArray(c.specialties) && typeof SPECIALTIES !== "undefined") {
-      SPECIALTIES.length = 0; c.specialties.forEach(s => SPECIALTIES.push(s));
+    if (c) {
+      if (c.texts && typeof STR !== "undefined") deepMerge(STR, c.texts);
+      if (Array.isArray(c.specialties) && typeof SPECIALTIES !== "undefined") {
+        SPECIALTIES.length = 0; c.specialties.forEach(s => SPECIALTIES.push(s));
+      }
+      if (Array.isArray(c.doctors) && typeof DOCTORS !== "undefined") {
+        DOCTORS.length = 0; c.doctors.forEach(d => DOCTORS.push(d));
+      }
+      if (Array.isArray(c.timeSlots) && typeof TIME_SLOTS !== "undefined") {
+        TIME_SLOTS.length = 0; c.timeSlots.forEach(t => TIME_SLOTS.push(t));
+      }
+      if (Array.isArray(c.notOnline) && typeof NOT_ONLINE !== "undefined") {
+        NOT_ONLINE.length = 0; c.notOnline.forEach(n => NOT_ONLINE.push(n));
+      }
     }
-    if (Array.isArray(c.doctors) && typeof DOCTORS !== "undefined") {
-      DOCTORS.length = 0; c.doctors.forEach(d => DOCTORS.push(d));
-    }
-    if (Array.isArray(c.timeSlots) && typeof TIME_SLOTS !== "undefined") {
-      TIME_SLOTS.length = 0; c.timeSlots.forEach(t => TIME_SLOTS.push(t));
-    }
-    if (Array.isArray(c.notOnline) && typeof NOT_ONLINE !== "undefined") {
-      NOT_ONLINE.length = 0; c.notOnline.forEach(n => NOT_ONLINE.push(n));
-    }
+    // خشتەی پزیشکەکان هەمیشە لە کۆتاییدا بەسەر داتاکەدا دەخرێت
+    overlayDoctorSettings();
   }
 
   /* وێنەیەکی ئێستای ناوەڕۆک — بۆ دەستکاری و هەناردن */
@@ -113,7 +137,7 @@ const NAXOSH = (function () {
   applyContent(loadOverrides());
 
   return {
-    snapshot, saveContent, resetContent, loadOverrides, applyContent,
+    snapshot, saveContent, resetContent, loadOverrides, applyContent, applyDoctorSettings,
     isAdmin, adminLogin, adminLogout, adminPw, setAdminPw,
     getUser, userLogin, userLogout
   };

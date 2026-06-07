@@ -175,10 +175,24 @@
   function specOptions(sel) {
     return content.specialties.map(s => `<option value="${s.id}" ${s.id === sel ? "selected" : ""}>${esc(s.name)}</option>`).join("");
   }
+  let docAccounts = {};   // doctorId → ئیمەیڵی هەژماری پزیشک (لە هەورەوە)
   function tabDoctors(box) {
     box.innerHTML = `
       <button class="btn btn-primary btn-sm adm-add" id="add-doc">➕ ${STR.admin.add}</button>
       <div id="doc-cards">${content.doctors.map(doctorRow).join("")}</div>`;
+
+    // دۆخی هەژمارەکانی پزیشکان لە هەورەوە بهێنە و پیشانی بدە
+    if (window.NAXOSH_DB && NAXOSH_DB.active) {
+      NAXOSH_DB.listDoctorAccounts().then(map => {
+        docAccounts = map || {};
+        box.querySelectorAll("[data-acc]").forEach(n => {
+          const email = docAccounts[n.dataset.acc];
+          n.textContent = email
+            ? `✓ هەژمار هەیە: ${email} (پزیشک خۆی وشەی نهێنی دەگۆڕێت لە داشبۆردەکەیەوە)`
+            : "هێشتا هەژمار دروست نەکراوە — ئیمەیڵ و وشەی نهێنی بنووسە و دوگمەکە دابگرە.";
+        });
+      });
+    }
 
     document.getElementById("add-doc").addEventListener("click", () => {
       const id = content.doctors.reduce((m, d) => Math.max(m, d.id), 0) + 1;
@@ -212,6 +226,31 @@
     cards.addEventListener("input", onEdit);
     cards.addEventListener("change", onEdit);
     cards.addEventListener("click", e => {
+      // دروستکردنی هەژماری چوونەژوورەوە بۆ پزیشک
+      const mk = e.target.closest(".adm-cred-make");
+      if (mk) {
+        const id = +mk.dataset.id;
+        const card = mk.closest("[data-idx]");
+        const email = card.querySelector("[data-cred-email]").value.trim();
+        const pw = card.querySelector("[data-cred-pw]").value;
+        if (!email.includes("@")) { alert("تکایە ئیمەیڵێکی دروست بنووسە."); return; }
+        if (pw.length < 6) { alert("وشەی نهێنی پێویستە لانیکەم ٦ پیت بێت."); return; }
+        mk.disabled = true; mk.textContent = "...";
+        NAXOSH_DB.createDoctorAccount(email, pw, id).then(r => {
+          mk.disabled = false; mk.textContent = "دروستکردنی هەژمار";
+          const status = card.querySelector("[data-acc]");
+          if (r.ok) {
+            docAccounts[String(id)] = email;
+            if (status) status.textContent = `✓ هەژمار دروستکرا: ${email}`;
+            flash("هەژماری پزیشک دروستکرا ✓");
+          } else {
+            alert(r.code === "auth/email-already-in-use"
+              ? "ئەم ئیمەیڵە پێشتر بەکارهاتووە — ئیمەیڵێکی تر هەڵبژێرە."
+              : "نەتوانرا هەژمار دروست بکرێت: " + r.code);
+          }
+        });
+        return;
+      }
       const del = e.target.closest(".adm-del"); if (!del) return;
       content.doctors.splice(+del.dataset.idx, 1); renderTab();
     });
@@ -242,6 +281,16 @@
             <textarea data-f="slots" rows="3">${esc((Array.isArray(d.slots) && d.slots.length ? d.slots : (content.timeSlots || [])).join("\n"))}</textarea>
           </label>
           <label class="adm-field adm-full">کورتەی پزیشک<textarea data-f="bio" rows="2">${esc(d.bio)}</textarea></label>
+          ${(window.NAXOSH_DB && NAXOSH_DB.active) ? `
+          <div class="adm-field adm-full adm-cred">
+            <span>🔑 هەژماری چوونەژوورەوەی ئەم پزیشکە (بۆ داشبۆردی پزیشک)</span>
+            <p class="muted" data-acc="${d.id}">...</p>
+            <div class="adm-cred-row">
+              <input type="email" data-cred-email placeholder="ئیمەیڵ — بۆ نموونە: dr-lala@naxosh.com" dir="ltr" autocomplete="off">
+              <input type="password" data-cred-pw placeholder="وشەی نهێنی (لانیکەم ٦ پیت)" dir="ltr" autocomplete="new-password">
+              <button type="button" class="btn btn-sm btn-primary adm-cred-make" data-id="${d.id}">دروستکردنی هەژمار</button>
+            </div>
+          </div>` : ``}
         </div>
       </div>`;
   }

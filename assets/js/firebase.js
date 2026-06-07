@@ -11,7 +11,7 @@
    ============================================================ */
 
 window.NAXOSH_DB = (function () {
-  const OFF = { active: false, uid: () => null, isAdmin: () => false, whenReady: () => {} };
+  const OFF = { active: false, uid: () => null, role: () => null, isAdmin: () => false, isDoctor: () => false, doctorId: () => null, whenReady: () => {} };
 
   if (!window.NAXOSH_FIREBASE_READY || typeof firebase === "undefined" ||
       typeof firebase.auth !== "function") {
@@ -31,7 +31,8 @@ window.NAXOSH_DB = (function () {
   const LS = { content: "naxosh_content", adminPw: "naxosh_admin_pw", bookings: "naxosh_bookings" };
 
   let curUid = null;
-  let curIsAdmin = false;
+  let curRole = null;             // "patient" | "doctor" | "admin"
+  let curDoctorId = null;         // ناسنامەی پزیشک ئەگەر ڕۆڵەکە پزیشک بێت
   let staticAttached = false;     // گوێگرە نەگۆڕەکان (content/settings) تەنها جارێک
   let unsubBookings = null;
   const readyQueue = [];          // فەرمانەکان کە چاوەڕێی ناسنامەن
@@ -60,16 +61,27 @@ window.NAXOSH_DB = (function () {
         try { localStorage.setItem(LS.adminPw, s.adminPw); } catch (_) {}
       }
     }, err => console.warn("[naxosh] settings sync:", err));
+
+    // خشتەی پزیشکەکان (ڕۆژ و کاتەکان کە پزیشک خۆی دەستکاری دەکات)
+    db.collection("doctorSettings").onSnapshot(snap => {
+      const map = {};
+      snap.forEach(doc => { map[doc.id] = doc.data(); });
+      if (window.NAXOSH && typeof NAXOSH.applyDoctorSettings === "function") {
+        NAXOSH.applyDoctorSettings(map);
+      }
+      emit("naxosh:content", null);
+    }, err => console.warn("[naxosh] doctorSettings sync:", err));
   }
 
-  /* ---------- گوێگری تۆمارکردن (گۆڕاو بەپێی ناسنامە) ----------
-     بەڕێوەبەر: هەموو تۆمارکردنەکان. نەخۆش: تەنها ئەوانەی خۆی. */
+  /* ---------- گوێگری تۆمارکردن (گۆڕاو بەپێی ڕۆڵ) ----------
+     بەڕێوەبەر: هەمووی. پزیشک: تەنها هی خۆی. نەخۆش: تەنها ئەوانەی خۆی. */
   function attachBookings() {
     if (unsubBookings) { unsubBookings(); unsubBookings = null; }
     if (!curUid) return;
-    const q = curIsAdmin
-      ? db.collection("bookings")
-      : db.collection("bookings").where("ownerUid", "==", curUid);
+    let q;
+    if (curRole === "admin") q = db.collection("bookings");
+    else if (curRole === "doctor") q = db.collection("bookings").where("doctorId", "==", curDoctorId);
+    else q = db.collection("bookings").where("ownerUid", "==", curUid);
     unsubBookings = q.onSnapshot(snap => {
       const list = [];
       snap.forEach(doc => list.push(doc.data()));
@@ -80,6 +92,16 @@ window.NAXOSH_DB = (function () {
   }
 
   /* ---------- گۆڕانی دۆخی ناسنامە ---------- */
+  function finishAuth() {
+    attachStatic();
+    attachBookings();
+
+    // فەرمانە چاوەڕێکراوەکان جێبەجێ بکە
+    while (readyQueue.length) { try { readyQueue.shift()(curUid); } catch (_) {} }
+
+    emit("naxosh:auth", { uid: curUid, role: curRole, isAdmin: curRole === "admin" });
+  }
+
   auth.onAuthStateChanged(user => {
     if (!user) {
       // هیچ ناسنامەیەک نییە — بە نهێنی بچۆ ژوورەوە
@@ -90,15 +112,21 @@ window.NAXOSH_DB = (function () {
       return;
     }
     curUid = user.uid;
-    curIsAdmin = !user.isAnonymous;   // ئیمەیڵ = بەڕێوەبەر، نهێنی = نەخۆش
+    curDoctorId = null;
 
-    attachStatic();
-    attachBookings();
-
-    // فەرمانە چاوەڕێکراوەکان جێبەجێ بکە
-    while (readyQueue.length) { try { readyQueue.shift()(curUid); } catch (_) {} }
-
-    emit("naxosh:auth", { uid: curUid, isAdmin: curIsAdmin });
+    if (user.isAnonymous) {           // نهێنی = نەخۆش
+      curRole = "patient";
+      finishAuth();
+      return;
+    }
+    // هەژماری ئیمەیڵ: ئەگەر لە doctorAccounts دا بێت پزیشکە، ئەگەرنا بەڕێوەبەرە
+    db.collection("doctorAccounts").doc(user.uid).get()
+      .then(snap => {
+        if (snap.exists) { curRole = "doctor"; curDoctorId = snap.data().doctorId; }
+        else curRole = "admin";
+      })
+      .catch(() => { curRole = "admin"; })
+      .then(finishAuth);
   });
 
   /* ---------- نووسین بۆ هەور ---------- */
@@ -170,7 +198,7 @@ window.NAXOSH_DB = (function () {
       .catch(e => console.warn("[naxosh] sendChat:", e));
   }
 
-  /* ---------- پاراستنی بەڕێوەبەر ---------- */
+  /* ---------- چوونەژوورەوەی بەڕێوەبەر / پزیشک (ئیمەیڵ + وشەی نهێنی) ---------- */
   function adminSignIn(email, pw) {
     return auth.signInWithEmailAndPassword((email || "").trim(), pw)
       .then(() => true)
@@ -186,6 +214,42 @@ window.NAXOSH_DB = (function () {
     return u.updatePassword(newPw);
   }
 
+  /* ---------- هەژمارەکانی پزیشکان ----------
+     بەڕێوەبەر لە داشبۆردەوە هەژمار بۆ هەر پزیشکێک دروست دەکات.
+     بۆ ئەوەی دانیشتنی بەڕێوەبەر نەپچڕێت، هەژمارەکە لە ئەپێکی لاوەکیدا
+     دروست دەکرێت (secondary app) و یەکسەر دەرچوونی لێدەکرێت. */
+  function createDoctorAccount(email, pw, doctorId) {
+    email = (email || "").trim();
+    let second;
+    try { second = firebase.app("naxosh-second"); }
+    catch (_) { second = firebase.initializeApp(window.NAXOSH_FIREBASE, "naxosh-second"); }
+    return second.auth().createUserWithEmailAndPassword(email, pw)
+      .then(cred => {
+        const uid = cred.user.uid;
+        return second.auth().signOut().then(() =>
+          db.collection("doctorAccounts").doc(uid)
+            .set({ doctorId, email, createdAt: Date.now() })
+        );
+      })
+      .then(() => ({ ok: true }))
+      .catch(e => ({ ok: false, code: e.code || String(e) }));
+  }
+  function listDoctorAccounts() {
+    // بۆ بەڕێوەبەر: نەخشەی doctorId → ئیمەیڵ
+    return db.collection("doctorAccounts").get()
+      .then(snap => {
+        const m = {};
+        snap.forEach(doc => { const a = doc.data(); m[String(a.doctorId)] = a.email; });
+        return m;
+      })
+      .catch(e => { console.warn("[naxosh] listDoctorAccounts:", e); return {}; });
+  }
+  function saveDoctorSettings(doctorId, data) {
+    return db.collection("doctorSettings").doc(String(doctorId))
+      .set({ ...data, doctorId, updatedAt: Date.now() }, { merge: true })
+      .catch(e => console.warn("[naxosh] saveDoctorSettings:", e));
+  }
+
   /* ---------- یارمەتیدەر ---------- */
   function whenReady(cb) {
     if (curUid) { try { cb(curUid); } catch (_) {} }
@@ -196,10 +260,14 @@ window.NAXOSH_DB = (function () {
   return {
     active: true,
     uid: () => curUid,
-    isAdmin: () => curIsAdmin,
+    role: () => curRole,
+    isAdmin: () => curRole === "admin",
+    isDoctor: () => curRole === "doctor",
+    doctorId: () => curDoctorId,
     whenReady,
     pushContent, pushSettings, pushBooking, removeBooking, updateBooking, pushUser,
     takeSlot, freeSlot, watchTaken,
+    createDoctorAccount, listDoctorAccounts, saveDoctorSettings,
     watchChat, sendChat,
     adminSignIn, signOutAdmin, changeAdminPassword
   };

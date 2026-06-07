@@ -648,10 +648,10 @@ document.addEventListener("DOMContentLoaded", () => {
   initFn();
 
   // کاتێک ناوەڕۆکی نوێ لە هەورەوە دێت — مینۆ و پەڕە نوێ بکەرەوە
-  // (گفتوگۆ نا، چونکە خۆی هاوکاتە؛ تۆمارکردنیش جیا مامەڵەی لەگەڵ دەکرێت)
+  // (پەڕەی چاوپێکەوتنەکانیش — چونکە بەستەری ژووری پزیشک لە ناوەڕۆکەوە دێت)
   document.addEventListener("naxosh:content", () => {
     renderChrome(page);
-    if (page !== "chat" && page !== "appointments") initFn();
+    if (page !== "chat") initFn();
   });
   // کاتێک تۆمارکردنەکان دەگۆڕێن، تەنها پەڕەی چاوپێکەوتنەکان نوێ بکەرەوە
   document.addEventListener("naxosh:bookings", () => {

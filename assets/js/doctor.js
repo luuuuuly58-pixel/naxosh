@@ -213,6 +213,11 @@
   document.addEventListener("naxosh:bookings", () => {
     if (online() && NAXOSH_DB.isDoctor() && activeTab === "bookings") renderTab();
   });
+  // ناوەڕۆک/خشتە لە هەورەوە گۆڕا — تەنها تابی چاوپێکەوتنەکان نوێ بکەرەوە
+  // (تابی خشتە نا، تاکو دەستکارییەکانی پزیشک نەسڕێتەوە لە کاتی نووسیندا)
+  document.addEventListener("naxosh:content", () => {
+    if (online() && NAXOSH_DB.isDoctor() && activeTab === "bookings") renderTab();
+  });
 
   /* ---------- گۆڕانی دۆخی ناسنامە ---------- */
   document.addEventListener("naxosh:auth", () => {

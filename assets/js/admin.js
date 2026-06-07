@@ -448,6 +448,10 @@
   document.addEventListener("naxosh:bookings", () => {
     if (NAXOSH.isAdmin() && activeTab === "bookings") renderTab();
   });
+  // بەستەری ژووری پزیشک لە ناوەڕۆکەوە دێت — تابی تۆمارکراوەکان نوێ بکەرەوە
+  document.addEventListener("naxosh:content", () => {
+    if (NAXOSH.isAdmin() && activeTab === "bookings") renderTab();
+  });
 
   /* ---------- گۆڕانی دۆخی ناسنامە (دانیشتنی پارێزراو یان چوونەدەرەوە) ---------- */
   document.addEventListener("naxosh:auth", () => {

@@ -424,10 +424,10 @@ function showBookingSuccess(d, booking) {
       <h2>تۆمارکردنەکەت سەرکەوتوو بوو!</h2>
       <p>چاوپێکەوتنت لەگەڵ <strong>${d.name}</strong></p>
       <p class="success-when">📅 ${booking.day} — 🕐 ${booking.time}</p>
-      <p class="success-note">⏳ دوای ئەوەی پزیشک تۆمارکردنەکەت پشتڕاست دەکاتەوە، دوگمەی
-        «چوونە ناو چاوپێکەوتنی ڤیدیۆ 🎥» لە پەڕەی «چاوپێکەوتنەکانم» دەردەکەوێت.
-        لە کاتی دیاریکراودا لەوێوە بچۆ ژوورەوە.</p>
-      <a class="btn btn-primary btn-block" href="appointments.html">بینینی چاوپێکەوتنەکانم</a>
+      <p class="success-note">🎥 لە کاتی دیاریکراودا ئەم دوگمەیە دابگرە — پزیشکیش لە هەمان کاتدا
+        دێتە ناو ژوورەکە. هەمیشە لە پەڕەی «چاوپێکەوتنەکانم»یشەوە دەستت دەگات.</p>
+      <a class="btn btn-primary btn-block" href="${booking.meet}" target="_blank" rel="noopener">🎥 چوونە ناو چاوپێکەوتنی ڤیدیۆ</a>
+      <a class="btn btn-ghost btn-block" href="appointments.html">بینینی چاوپێکەوتنەکانم</a>
     </div>`;
 }
 
@@ -551,9 +551,7 @@ function initAppointments() {
       </div>
       <div class="appt-side">
         <span class="badge ${confirmed ? 'badge-green' : 'badge-amber'}">${b.status}</span>
-        ${confirmed && b.meet
-          ? `<a class="btn btn-sm btn-primary" href="${b.meet}" target="_blank" rel="noopener">🎥 چوونە ناو چاوپێکەوتن</a>`
-          : `<span class="muted appt-wait">⏳ چاوەڕوانی پشتڕاستکردنەوەی پزیشکە</span>`}
+        ${b.meet ? `<a class="btn btn-sm btn-primary" href="${b.meet}" target="_blank" rel="noopener">🎥 چوونە ناو چاوپێکەوتن</a>` : ""}
         <button class="btn btn-sm btn-ghost" data-cancel="${b.id}">هەڵوەشاندنەوە</button>
       </div>
     </article>`;

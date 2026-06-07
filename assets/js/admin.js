@@ -291,7 +291,7 @@
           <label class="adm-field adm-full">کاتە بەردەستەکانی ئەم پزیشکە (هەر دێڕێک یەک کات — بۆ نموونە: ١٩:٠٠)
             <textarea data-f="slots" rows="3">${esc((Array.isArray(d.slots) && d.slots.length ? d.slots : (content.timeSlots || [])).join("\n"))}</textarea>
           </label>
-          <label class="adm-field adm-full">🎥 بەستەری ژووری چاوپێکەوتن (Google Meet / Whereby — پزیشک خۆشی دەتوانێت لە داشبۆردەکەیەوە دایبنێت)
+          <label class="adm-field adm-full">🎥 بەستەری ژووری چاوپێکەوتن (Google Meet / Whereby — تەنها لێرەوە دادەنرێت)
             <input data-f="meet" value="${esc(d.meet || "")}" dir="ltr" placeholder="https://meet.google.com/abc-defg-hij">
           </label>
           <label class="adm-field adm-full">کورتەی پزیشک<textarea data-f="bio" rows="2">${esc(d.bio)}</textarea></label>
@@ -358,7 +358,6 @@
       return;
     }
     box.innerHTML = list.map(b => {
-      const confirmed = b.status === STATUS_CONFIRMED;
       const meet = docMeet(b.doctorId);
       return `
       <div class="adm-booking" data-id="${b.id}">
@@ -370,16 +369,12 @@
           ${b.symptoms ? `<p class="muted">📝 ${esc(b.symptoms)}</p>` : ""}
         </div>
         <div class="adm-booking-side">
-          <span class="badge ${confirmed ? "badge-green" : "badge-amber"}">${esc(b.status || "")}</span>
-          ${!confirmed ? `<button class="btn btn-sm btn-primary adm-bk-ok" data-id="${b.id}">✓ پشتڕاستکردنەوە</button>` : ""}
           ${meet ? `<a class="btn btn-sm btn-ghost" href="${esc(meet)}" target="_blank" rel="noopener">🎥 ژووری پزیشک</a>` : ""}
           <button class="btn btn-sm btn-ghost adm-bk-del" data-id="${b.id}">🗑 ${STR.admin.delete}</button>
         </div>
       </div>`;
     }).join("");
     box.addEventListener("click", e => {
-      const ok = e.target.closest(".adm-bk-ok");
-      if (ok) { confirmBooking(ok.dataset.id); renderTab(); flash("پشتڕاستکرایەوە ✓"); return; }
       const del = e.target.closest(".adm-bk-del"); if (!del) return;
       if (confirm("ئەم تۆمارکردنە بسڕێتەوە؟")) { cancelBooking(del.dataset.id); renderTab(); }
     });

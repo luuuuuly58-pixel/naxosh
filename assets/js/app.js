@@ -58,9 +58,8 @@ function isoDate(dt) {
   return dt.getFullYear() + "-" + p(dt.getMonth() + 1) + "-" + p(dt.getDate());
 }
 
-/* دۆخەکانی تۆمارکردن */
+/* دۆخی تۆمارکردن (تەنها بۆ داتا — پشتڕاستکردنەوە نەماوە، دوگمەی ژوور یەکسەر دەردەکەوێت) */
 const STATUS_PENDING = "چاوەڕوان";
-const STATUS_CONFIRMED = "پشتڕاستکرا";
 
 /* ---------- کۆگای ناوخۆیی (localStorage) ---------- */
 
@@ -92,14 +91,6 @@ function cancelBooking(id) {
     // کاتەکە ئازاد بکەرەوە تاکو کەسێکی تر بتوانێت بیگرێت
     if (gone && gone.slotKey) NAXOSH_DB.freeSlot(gone.slotKey);
   }
-}
-/* پشتڕاستکردنەوەی تۆمارکردن لەلایەن بەڕێوەبەرەوە */
-function confirmBooking(id) {
-  id = String(id);
-  const list = getBookings();
-  const b = list.find(x => String(x.id) === id);
-  if (b) { b.status = STATUS_CONFIRMED; localStorage.setItem("naxosh_bookings", JSON.stringify(list)); }
-  if (window.NAXOSH_DB && NAXOSH_DB.active) NAXOSH_DB.updateBooking(id, { status: STATUS_CONFIRMED });
 }
 
 function getChat(doctorId) {
@@ -553,7 +544,6 @@ function initAppointments() {
   }
 
   wrap.innerHTML = list.map(b => {
-    const confirmed = b.status === STATUS_CONFIRMED;
     const meet = docMeet(b.doctorId);
     return `
     <article class="appt-card">
@@ -565,9 +555,9 @@ function initAppointments() {
         ${b.symptoms ? `<p class="appt-sym">📝 ${b.symptoms}</p>` : ""}
       </div>
       <div class="appt-side">
-        <span class="badge ${confirmed ? 'badge-green' : 'badge-amber'}">${b.status}</span>
         ${meet
-          ? `<a class="btn btn-sm btn-primary" href="${meet}" target="_blank" rel="noopener">🎥 چوونە ناو چاوپێکەوتن</a>`
+          ? `<a class="btn btn-sm btn-primary" href="${meet}" target="_blank" rel="noopener">🎥 چوونە ناو چاوپێکەوتن</a>
+             <span class="muted appt-wait">🕐 تکایە ڕێک لە کاتی دیاریکراودا بچۆ ژوورەوە — پزیشک ڕێگەت پێدەدات</span>`
           : `<span class="muted appt-wait">📞 پزیشک لە کاتی دیاریکراودا پەیوەندیت پێوە دەکات</span>`}
         <button class="btn btn-sm btn-ghost" data-cancel="${b.id}">هەڵوەشاندنەوە</button>
       </div>

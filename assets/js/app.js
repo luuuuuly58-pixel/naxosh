@@ -45,6 +45,13 @@ function docSlots(d) {
   if (Array.isArray(d.slots) && d.slots.length) return d.slots;
   return (typeof TIME_SLOTS !== "undefined") ? TIME_SLOTS : [];
 }
+/* بەستەری ژووری چاوپێکەوتنی پزیشک (Google Meet / Whereby / ...) — هەمیشە
+   لە پڕۆفایلی ئێستای پزیشکەوە دەخوێنرێتەوە، بۆیە گۆڕینی بەستەر یەکسەر
+   لە هەموو تۆمارکردنە کۆنەکانیشدا کاردەکات. */
+function docMeet(doctorId) {
+  const d = DOCTORS.find(x => x.id === Number(doctorId));
+  return (d && typeof d.meet === "string") ? d.meet.trim() : "";
+}
 /* ڕێکەوت بە شێوەی 2026-06-07 (بە کاتی ناوخۆیی، نەک UTC) */
 function isoDate(dt) {
   const p = n => String(n).padStart(2, "0");
@@ -69,8 +76,6 @@ function saveBooking(b) {
   if (!b.id) b.id = newBookingId();
   b.createdAt = Date.now();
   b.status = STATUS_PENDING;
-  // ژووری ڤیدیۆی تایبەت (Jitsi — بەخۆڕایی، بێ هەژمار) بۆ ئەم چاوپێکەوتنە
-  b.meet = "https://meet.jit.si/naxosh-" + b.id.replace(/[^a-zA-Z0-9_-]/g, "");
   list.push(b);
   localStorage.setItem("naxosh_bookings", JSON.stringify(list));
   if (window.NAXOSH_DB && NAXOSH_DB.active) NAXOSH_DB.pushBooking(b);
@@ -424,15 +429,18 @@ function initDoctorProfile() {
 
 function showBookingSuccess(d, booking) {
   const card = document.getElementById("booking-card");
+  const meet = docMeet(d.id);
   card.innerHTML = `
     <div class="success">
       <div class="success-icon">✅</div>
       <h2>تۆمارکردنەکەت سەرکەوتوو بوو!</h2>
       <p>چاوپێکەوتنت لەگەڵ <strong>${d.name}</strong></p>
       <p class="success-when">📅 ${booking.day} — 🕐 ${booking.time}</p>
-      <p class="success-note">🎥 لە کاتی دیاریکراودا ئەم دوگمەیە دابگرە — پزیشکیش لە هەمان کاتدا
-        دێتە ناو ژوورەکە. هەمیشە لە پەڕەی «چاوپێکەوتنەکانم»یشەوە دەستت دەگات.</p>
-      <a class="btn btn-primary btn-block" href="${booking.meet}" target="_blank" rel="noopener">🎥 چوونە ناو چاوپێکەوتنی ڤیدیۆ</a>
+      ${meet
+        ? `<p class="success-note">🎥 لە کاتی دیاریکراودا ئەم دوگمەیە دابگرە — داواکاریت دەنێردرێت و
+             پزیشک ڕێگەت پێدەدات بۆ چوونەژوورەوە. هەمیشە لە پەڕەی «چاوپێکەوتنەکانم»یشەوە دەستت دەگات.</p>
+           <a class="btn btn-primary btn-block" href="${meet}" target="_blank" rel="noopener">🎥 چوونە ناو چاوپێکەوتنی ڤیدیۆ</a>`
+        : `<p class="success-note">📞 پزیشک لە کاتی دیاریکراودا پەیوەندیت پێوە دەکات.</p>`}
       <a class="btn btn-ghost btn-block" href="appointments.html">بینینی چاوپێکەوتنەکانم</a>
     </div>`;
 }
@@ -546,6 +554,7 @@ function initAppointments() {
 
   wrap.innerHTML = list.map(b => {
     const confirmed = b.status === STATUS_CONFIRMED;
+    const meet = docMeet(b.doctorId);
     return `
     <article class="appt-card">
       ${avatar(b.doctorName, 56)}
@@ -557,7 +566,9 @@ function initAppointments() {
       </div>
       <div class="appt-side">
         <span class="badge ${confirmed ? 'badge-green' : 'badge-amber'}">${b.status}</span>
-        ${b.meet ? `<a class="btn btn-sm btn-primary" href="${b.meet}" target="_blank" rel="noopener">🎥 چوونە ناو چاوپێکەوتن</a>` : ""}
+        ${meet
+          ? `<a class="btn btn-sm btn-primary" href="${meet}" target="_blank" rel="noopener">🎥 چوونە ناو چاوپێکەوتن</a>`
+          : `<span class="muted appt-wait">📞 پزیشک لە کاتی دیاریکراودا پەیوەندیت پێوە دەکات</span>`}
         <button class="btn btn-sm btn-ghost" data-cancel="${b.id}">هەڵوەشاندنەوە</button>
       </div>
     </article>`;

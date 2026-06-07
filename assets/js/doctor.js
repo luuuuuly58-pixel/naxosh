@@ -114,13 +114,17 @@
 
   /* ---------- تابی چاوپێکەوتنەکان ---------- */
   function tabBookings(box) {
+    const me = myDoctor();
+    const noMeet = me && !docMeet(me.id)
+      ? `<p class="adm-hint">⚠️ ${STR.dr.noMeetWarn}</p>` : "";
     const list = getBookings().slice().reverse();
     if (!list.length) {
-      box.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><h3>${STR.dr.noBookings}</h3></div>`;
+      box.innerHTML = noMeet + `<div class="empty-state"><div class="empty-icon">📭</div><h3>${STR.dr.noBookings}</h3></div>`;
       return;
     }
-    box.innerHTML = list.map(b => {
+    box.innerHTML = noMeet + list.map(b => {
       const confirmed = b.status === STATUS_CONFIRMED;
+      const meet = docMeet(b.doctorId);
       return `
       <div class="adm-booking" data-id="${b.id}">
         <div>
@@ -132,7 +136,7 @@
         <div class="adm-booking-side">
           <span class="badge ${confirmed ? "badge-green" : "badge-amber"}">${esc(b.status || "")}</span>
           ${!confirmed ? `<button class="btn btn-sm btn-primary dr-bk-ok" data-id="${b.id}">✓ پشتڕاستکردنەوە</button>` : ""}
-          ${b.meet ? `<a class="btn btn-sm btn-ghost" href="${esc(b.meet)}" target="_blank" rel="noopener">🎥 ژووری ڤیدیۆ</a>` : ""}
+          ${meet ? `<a class="btn btn-sm btn-ghost" href="${esc(meet)}" target="_blank" rel="noopener">🎥 ژوورەکەم</a>` : ""}
           <button class="btn btn-sm btn-ghost dr-bk-del" data-id="${b.id}">🗑 ${STR.admin.delete}</button>
         </div>
       </div>`;
@@ -165,16 +169,22 @@
         <label class="adm-field adm-full">${STR.dr.slotsLabel}
           <textarea id="dr-slots" rows="4">${esc(docSlots(me).join("\n"))}</textarea>
         </label>
+        <label class="adm-field adm-full">${STR.dr.meetLabel}
+          <input id="dr-meet" dir="ltr" value="${esc(me.meet || "")}" placeholder="https://meet.google.com/abc-defg-hij">
+        </label>
+        <p class="muted">${STR.dr.meetHint}</p>
         <button class="btn btn-primary" id="dr-save-sched">${STR.dr.saveSched}</button>
       </div>`;
     box.querySelector("#dr-save-sched").addEventListener("click", () => {
       const days = [...box.querySelectorAll("[data-day]")]
         .filter(c => c.checked).map(c => +c.dataset.day).sort((a, b) => a - b);
       const slots = box.querySelector("#dr-slots").value.split("\n").map(s => s.trim()).filter(Boolean);
+      let meet = box.querySelector("#dr-meet").value.trim();
+      if (meet && !/^https?:\/\//i.test(meet)) meet = "https://" + meet;
       if (!slots.length) { alert("تکایە لانیکەم یەک کات بنووسە."); return; }
       // یەکسەر لە ناوخۆدا جێبەجێی بکە، پاشان بۆ هەور بینێرە
-      me.days = days; me.slots = slots;
-      Promise.resolve(NAXOSH_DB.saveDoctorSettings(me.id, { days, slots }))
+      me.days = days; me.slots = slots; me.meet = meet;
+      Promise.resolve(NAXOSH_DB.saveDoctorSettings(me.id, { days, slots, meet }))
         .then(() => flash(STR.dr.schedSaved));
     });
   }

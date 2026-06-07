@@ -48,6 +48,7 @@ const NAXOSH = (function () {
       if (!s) return;
       if (Array.isArray(s.days)) d.days = s.days;
       if (Array.isArray(s.slots) && s.slots.length) d.slots = s.slots;
+      if (typeof s.meet === "string") d.meet = s.meet;
     });
   }
   function applyDoctorSettings(map) {

@@ -105,7 +105,16 @@
       renderTab();
     });
 
-    root.querySelector("#adm-save").addEventListener("click", () => { NAXOSH.saveContent(content); content = NAXOSH.snapshot(); flash(STR.admin.saved); });
+    root.querySelector("#adm-save").addEventListener("click", () => {
+      NAXOSH.saveContent(content);
+      // خشتە و بەستەری پزیشکەکان هاوکات بکە لەگەڵ doctorSettings —
+      // ئەگەرنا دەستکارییە کۆنەکانی پزیشک خۆی دەستکاریی بەڕێوەبەر دادەپۆشێت
+      if (window.NAXOSH_DB && NAXOSH_DB.active) {
+        content.doctors.forEach(d =>
+          NAXOSH_DB.saveDoctorSettings(d.id, { days: d.days || [], slots: d.slots || [], meet: d.meet || "" }));
+      }
+      content = NAXOSH.snapshot(); flash(STR.admin.saved);
+    });
     root.querySelector("#adm-logout").addEventListener("click", () => {
       Promise.resolve(NAXOSH.adminLogout()).then(() => { location.href = "index.html"; });
     });
@@ -221,6 +230,7 @@
       else if (f === "rating") v = parseFloat(v || "0") || 0;
       else if (f === "langs") v = v.split(/[،,]/).map(s => s.trim()).filter(Boolean);
       else if (f === "slots") v = v.split("\n").map(s => s.trim()).filter(Boolean);
+      else if (f === "meet") { v = v.trim(); if (v && !/^https?:\/\//i.test(v)) v = "https://" + v; }
       content.doctors[idx][f] = v;
     };
     cards.addEventListener("input", onEdit);
@@ -279,6 +289,9 @@
           </div>
           <label class="adm-field adm-full">کاتە بەردەستەکانی ئەم پزیشکە (هەر دێڕێک یەک کات — بۆ نموونە: ١٩:٠٠)
             <textarea data-f="slots" rows="3">${esc((Array.isArray(d.slots) && d.slots.length ? d.slots : (content.timeSlots || [])).join("\n"))}</textarea>
+          </label>
+          <label class="adm-field adm-full">🎥 بەستەری ژووری چاوپێکەوتن (Google Meet / Whereby — پزیشک خۆشی دەتوانێت لە داشبۆردەکەیەوە دایبنێت)
+            <input data-f="meet" value="${esc(d.meet || "")}" dir="ltr" placeholder="https://meet.google.com/abc-defg-hij">
           </label>
           <label class="adm-field adm-full">کورتەی پزیشک<textarea data-f="bio" rows="2">${esc(d.bio)}</textarea></label>
           ${(window.NAXOSH_DB && NAXOSH_DB.active) ? `
@@ -345,6 +358,7 @@
     }
     box.innerHTML = list.map(b => {
       const confirmed = b.status === STATUS_CONFIRMED;
+      const meet = docMeet(b.doctorId);
       return `
       <div class="adm-booking" data-id="${b.id}">
         <div>
@@ -357,7 +371,7 @@
         <div class="adm-booking-side">
           <span class="badge ${confirmed ? "badge-green" : "badge-amber"}">${esc(b.status || "")}</span>
           ${!confirmed ? `<button class="btn btn-sm btn-primary adm-bk-ok" data-id="${b.id}">✓ پشتڕاستکردنەوە</button>` : ""}
-          ${b.meet ? `<a class="btn btn-sm btn-ghost" href="${esc(b.meet)}" target="_blank" rel="noopener">🎥 ژووری ڤیدیۆ</a>` : ""}
+          ${meet ? `<a class="btn btn-sm btn-ghost" href="${esc(meet)}" target="_blank" rel="noopener">🎥 ژووری پزیشک</a>` : ""}
           <button class="btn btn-sm btn-ghost adm-bk-del" data-id="${b.id}">🗑 ${STR.admin.delete}</button>
         </div>
       </div>`;

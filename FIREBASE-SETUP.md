@@ -166,8 +166,16 @@ const firebaseConfig = {
 ## Doctor accounts (doctor dashboard)
 Each doctor can have their own login and dashboard at **`doctor-panel.html`**
 (linked in the site footer as "بۆ پزیشکان"). There they see only **their own**
-bookings (patient name, phone, time, video room), can confirm bookings, edit
-their **own working days + times**, and change their password.
+bookings (patient name, phone, time), can confirm bookings, edit their
+**own working days + times + meeting-room link**, and change their password.
+
+**Meeting room:** each doctor creates one permanent room — at
+**meet.google.com** (Google Meet) or **whereby.com** (free, patients join in
+the browser with no account) — and pastes its link once in their dashboard
+("ڕۆژ و کاتەکانم" tab). Patients then get a 🎥 join button on their bookings.
+Both services make patients **knock**; the doctor admits only the scheduled
+patient, so a saved/shared link can't be used to intrude. If the link is ever
+abused, the doctor just creates a fresh room and pastes the new link.
 
 - **Create a doctor's login:** Admin dashboard → **Doctors** tab → in the
   doctor's card, fill **email + password** under 🔑 and click
@@ -194,6 +202,6 @@ their **own working days + times**, and change their password.
 | `bookings/…` | Bookings (each tagged with its owner's `ownerUid`) |
 | `taken/…` | Which doctor time slots are already booked (no personal data) |
 | `doctorAccounts/…` | Which login belongs to which doctor (admin-managed) |
-| `doctorSettings/…` | Each doctor's working days + times (doctor-edited) |
+| `doctorSettings/…` | Each doctor's working days + times + meeting link (doctor-edited) |
 | `users/…` | User names and phone numbers |
 | `chats/…/messages/…` | Chat messages |

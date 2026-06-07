@@ -40,6 +40,20 @@ function docDays(d) {
 function availableToday(d) {
   return docDays(d).includes(new Date().getDay());
 }
+/* کاتە بەردەستەکانی پزیشک — هەر پزیشکە و کاتی تایبەتی خۆی */
+function docSlots(d) {
+  if (Array.isArray(d.slots) && d.slots.length) return d.slots;
+  return (typeof TIME_SLOTS !== "undefined") ? TIME_SLOTS : [];
+}
+/* ڕێکەوت بە شێوەی 2026-06-07 (بە کاتی ناوخۆیی، نەک UTC) */
+function isoDate(dt) {
+  const p = n => String(n).padStart(2, "0");
+  return dt.getFullYear() + "-" + p(dt.getMonth() + 1) + "-" + p(dt.getDate());
+}
+
+/* دۆخەکانی تۆمارکردن */
+const STATUS_PENDING = "چاوەڕوان";
+const STATUS_CONFIRMED = "پشتڕاستکرا";
 
 /* ---------- کۆگای ناوخۆیی (localStorage) ---------- */
 
@@ -47,11 +61,16 @@ function getBookings() {
   try { return JSON.parse(localStorage.getItem("naxosh_bookings") || "[]"); }
   catch { return []; }
 }
+function newBookingId() {
+  return String(Date.now()) + "_" + Math.random().toString(36).slice(2, 7);
+}
 function saveBooking(b) {
   const list = getBookings();
-  b.id = String(Date.now()) + "_" + Math.random().toString(36).slice(2, 7);
+  if (!b.id) b.id = newBookingId();
   b.createdAt = Date.now();
-  b.status = "چاوەڕوان";
+  b.status = STATUS_PENDING;
+  // ژووری ڤیدیۆی تایبەت (Jitsi — بەخۆڕایی، بێ هەژمار) بۆ ئەم چاوپێکەوتنە
+  b.meet = "https://meet.jit.si/naxosh-" + b.id.replace(/[^a-zA-Z0-9_-]/g, "");
   list.push(b);
   localStorage.setItem("naxosh_bookings", JSON.stringify(list));
   if (window.NAXOSH_DB && NAXOSH_DB.active) NAXOSH_DB.pushBooking(b);
@@ -59,9 +78,23 @@ function saveBooking(b) {
 }
 function cancelBooking(id) {
   id = String(id);
-  const list = getBookings().filter(b => String(b.id) !== id);
+  const all = getBookings();
+  const gone = all.find(b => String(b.id) === id);
+  const list = all.filter(b => String(b.id) !== id);
   localStorage.setItem("naxosh_bookings", JSON.stringify(list));
-  if (window.NAXOSH_DB && NAXOSH_DB.active) NAXOSH_DB.removeBooking(id);
+  if (window.NAXOSH_DB && NAXOSH_DB.active) {
+    NAXOSH_DB.removeBooking(id);
+    // کاتەکە ئازاد بکەرەوە تاکو کەسێکی تر بتوانێت بیگرێت
+    if (gone && gone.slotKey) NAXOSH_DB.freeSlot(gone.slotKey);
+  }
+}
+/* پشتڕاستکردنەوەی تۆمارکردن لەلایەن بەڕێوەبەرەوە */
+function confirmBooking(id) {
+  id = String(id);
+  const list = getBookings();
+  const b = list.find(x => String(x.id) === id);
+  if (b) { b.status = STATUS_CONFIRMED; localStorage.setItem("naxosh_bookings", JSON.stringify(list)); }
+  if (window.NAXOSH_DB && NAXOSH_DB.active) NAXOSH_DB.updateBooking(id, { status: STATUS_CONFIRMED });
 }
 
 function getChat(doctorId) {
@@ -288,16 +321,52 @@ function initDoctorProfile() {
   if (firstAvail === null) {
     daysBox.insertAdjacentHTML("afterend", `<p class="muted" style="margin-top:8px">ئەم پزیشکە لەم ٧ ڕۆژەی داهاتوودا بەردەست نییە.</p>`);
   }
+
+  /* --- کاتەکان: کاتی تایبەتی ئەم پزیشکە + داخستنی کاتە گیراوەکان --- */
+  const slotsBox = document.getElementById("slots");
+  let takenSet = new Set();   // "date|time" بۆ هەر کاتێکی گیراو
+
+  function dateForOffset(i) { return isoDate(new Date(today.getTime() + i * 86400000)); }
+
+  function renderSlots() {
+    const slots = docSlots(d);
+    if (!slots.length) {
+      slotsBox.innerHTML = `<p class="muted">هیچ کاتێک دانەنراوە بۆ ئەم پزیشکە.</p>`;
+      return;
+    }
+    const date = chosenDay === null ? null : dateForOffset(chosenDay);
+    slotsBox.innerHTML = slots.map(t => {
+      const taken = date !== null && takenSet.has(date + "|" + t);
+      return `<button class="slot ${taken ? 'slot-taken' : ''} ${t === chosenSlot ? 'slot-active' : ''}" data-t="${t}" ${taken ? "disabled" : ""}>${taken ? t + " — گیراوە" : t}</button>`;
+    }).join("");
+  }
+  renderSlots();
+
+  // کاتە گیراوەکان: لە هەورەوە (هاوکات) یان لە کۆگای ناوخۆییەوە
+  if (window.NAXOSH_DB && NAXOSH_DB.active) {
+    NAXOSH_DB.whenReady(() => {
+      NAXOSH_DB.watchTaken(d.id, list => {
+        takenSet = new Set(list.map(t => t.date + "|" + t.time));
+        renderSlots();
+      });
+    });
+  } else {
+    takenSet = new Set(getBookings()
+      .filter(b => b.doctorId === d.id && b.date && b.time)
+      .map(b => b.date + "|" + b.time));
+    renderSlots();
+  }
+
   daysBox.addEventListener("click", e => {
     const b = e.target.closest(".day"); if (!b || b.disabled) return;
     chosenDay = Number(b.dataset.i);
+    chosenSlot = null;   // گۆڕینی ڕۆژ، هەڵبژاردنی کات دەسڕێتەوە
     [...daysBox.children].forEach(c => c.classList.toggle("day-active", c === b));
+    renderSlots();
   });
 
-  const slotsBox = document.getElementById("slots");
-  slotsBox.innerHTML = TIME_SLOTS.map(t => `<button class="slot" data-t="${t}">${t}</button>`).join("");
   slotsBox.addEventListener("click", e => {
-    const b = e.target.closest(".slot"); if (!b) return;
+    const b = e.target.closest(".slot"); if (!b || b.disabled) return;
     chosenSlot = b.dataset.t;
     [...slotsBox.children].forEach(c => c.classList.toggle("slot-active", c === b));
   });
@@ -309,17 +378,36 @@ function initDoctorProfile() {
     const finalize = () => {
       const user = NAXOSH.getUser();
       const dt = new Date(today.getTime() + chosenDay * 86400000);
+      const date = isoDate(dt);
       const dayLabel = chosenDay === 0 ? "ئەمڕۆ" : dayNames[dt.getDay()];
-      const booking = saveBooking({
+      const slotKey = d.id + "_" + date + "_" + chosenSlot;
+      const rec = {
+        id: newBookingId(),
         doctorId: d.id, doctorName: d.name, doctorTitle: d.title,
         spec: d.spec, price: d.price,
+        date, slotKey,
         day: `${dayLabel} ${toKurdishDigits(dt.getDate())}`,
         time: chosenSlot,
         symptoms: document.getElementById("symptoms").value.trim(),
         userName: user ? user.name : "",
         userPhone: user ? user.phone : ""
-      });
-      showBookingSuccess(d, booking);
+      };
+      const slotJustTaken = () => {
+        alert("ببورە، ئەم کاتە هەر ئێستا لەلایەن کەسێکی ترەوە گیرا. تکایە کاتێکی تر هەڵبژێرە.");
+        takenSet.add(date + "|" + chosenSlot);
+        chosenSlot = null;
+        renderSlots();
+      };
+      if (window.NAXOSH_DB && NAXOSH_DB.active) {
+        // سەرەتا کاتەکە بگرە — ئەگەر کەسێکی تر پێش تۆ گرتبووی، تۆمارکردن ناکرێت
+        NAXOSH_DB.takeSlot(slotKey, { doctorId: d.id, date, time: chosenSlot, bookingId: rec.id }).then(ok => {
+          if (!ok) { slotJustTaken(); return; }
+          showBookingSuccess(d, saveBooking(rec));
+        });
+      } else {
+        if (takenSet.has(date + "|" + chosenSlot)) { slotJustTaken(); return; }
+        showBookingSuccess(d, saveBooking(rec));
+      }
     };
 
     // پێش تۆمارکردنی کۆتایی، پێویستە بەکارهێنەر ناو و ژمارەی بنووسێت
@@ -336,8 +424,10 @@ function showBookingSuccess(d, booking) {
       <h2>تۆمارکردنەکەت سەرکەوتوو بوو!</h2>
       <p>چاوپێکەوتنت لەگەڵ <strong>${d.name}</strong></p>
       <p class="success-when">📅 ${booking.day} — 🕐 ${booking.time}</p>
-      <a class="btn btn-primary btn-block" href="chat.html?doctor=${d.id}">${STR.common.startChat}</a>
-      <a class="btn btn-ghost btn-block" href="appointments.html">بینینی چاوپێکەوتنەکانم</a>
+      <p class="success-note">⏳ دوای ئەوەی پزیشک تۆمارکردنەکەت پشتڕاست دەکاتەوە، دوگمەی
+        «چوونە ناو چاوپێکەوتنی ڤیدیۆ 🎥» لە پەڕەی «چاوپێکەوتنەکانم» دەردەکەوێت.
+        لە کاتی دیاریکراودا لەوێوە بچۆ ژوورەوە.</p>
+      <a class="btn btn-primary btn-block" href="appointments.html">بینینی چاوپێکەوتنەکانم</a>
     </div>`;
 }
 
@@ -448,7 +538,9 @@ function initAppointments() {
     return;
   }
 
-  wrap.innerHTML = list.map(b => `
+  wrap.innerHTML = list.map(b => {
+    const confirmed = b.status === STATUS_CONFIRMED;
+    return `
     <article class="appt-card">
       ${avatar(b.doctorName, 56)}
       <div class="appt-info">
@@ -458,11 +550,14 @@ function initAppointments() {
         ${b.symptoms ? `<p class="appt-sym">📝 ${b.symptoms}</p>` : ""}
       </div>
       <div class="appt-side">
-        <span class="badge badge-amber">${b.status}</span>
-        <a class="btn btn-sm btn-primary" href="chat.html?doctor=${b.doctorId}">${STR.common.startChat}</a>
+        <span class="badge ${confirmed ? 'badge-green' : 'badge-amber'}">${b.status}</span>
+        ${confirmed && b.meet
+          ? `<a class="btn btn-sm btn-primary" href="${b.meet}" target="_blank" rel="noopener">🎥 چوونە ناو چاوپێکەوتن</a>`
+          : `<span class="muted appt-wait">⏳ چاوەڕوانی پشتڕاستکردنەوەی پزیشکە</span>`}
         <button class="btn btn-sm btn-ghost" data-cancel="${b.id}">هەڵوەشاندنەوە</button>
       </div>
-    </article>`).join("");
+    </article>`;
+  }).join("");
 
   wrap.addEventListener("click", e => {
     const btn = e.target.closest("[data-cancel]");

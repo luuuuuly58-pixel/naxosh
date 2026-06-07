@@ -251,6 +251,7 @@ section { padding: 56px 0; }
 .slot { padding: 9px 4px; border: 1px solid var(--line); border-radius: 10px; background: #fff; cursor: pointer; font-family: inherit; font-weight: 600; font-size: 0.85rem; }
 .slot:hover { border-color: var(--teal); }
 .slot-active { background: var(--teal); color: #fff; border-color: var(--teal); }
+.slot-taken, .slot[disabled] { opacity: .45; cursor: not-allowed; text-decoration: line-through; background: var(--bg); }
 textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-family: inherit; resize: vertical; font-size: 0.92rem; }
 textarea:focus { outline: none; border-color: var(--teal); }
 
@@ -259,6 +260,8 @@ textarea:focus { outline: none; border-color: var(--teal); }
 .success-icon { font-size: 3rem; margin-bottom: 8px; }
 .success h2 { color: var(--green); margin-bottom: 10px; }
 .success-when { background: var(--teal-light); color: var(--teal-dark); padding: 12px; border-radius: 12px; font-weight: 700; margin: 14px 0; }
+.success-note { color: var(--gray); font-size: 0.88rem; line-height: 1.8; margin-bottom: 14px; }
+.appt-wait { font-size: 0.76rem; max-width: 160px; text-align: center; }
 
 /* ---------- گفتوگۆ ---------- */
 .chat-shell { max-width: 720px; margin: 30px auto; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; height: 76vh; }

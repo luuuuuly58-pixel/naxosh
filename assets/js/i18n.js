@@ -77,7 +77,6 @@ const STR = {
       texts: "دەقەکان",
       doctors: "پزیشکەکان",
       specialties: "پسپۆڕییەکان",
-      slots: "کاتەکان",
       bookings: "تۆمارکراوەکان",
       settings: "ڕێکخستن"
     },

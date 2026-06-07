@@ -73,7 +73,7 @@
     const T = STR.admin.tabs;
     const tabs = [
       ["texts", T.texts], ["doctors", T.doctors], ["specialties", T.specialties],
-      ["slots", T.slots], ["bookings", T.bookings], ["settings", T.settings]
+      ["bookings", T.bookings], ["settings", T.settings]
     ];
     root.innerHTML = `
       <div class="adm-wrap container">
@@ -124,7 +124,7 @@
     const old = document.getElementById("adm-tab");
     const box = old.cloneNode(false);
     old.replaceWith(box);
-    ({ texts: tabTexts, doctors: tabDoctors, specialties: tabSpecialties, slots: tabSlots, bookings: tabBookings, settings: tabSettings }[activeTab] || tabTexts)(box);
+    ({ texts: tabTexts, doctors: tabDoctors, specialties: tabSpecialties, bookings: tabBookings, settings: tabSettings }[activeTab] || tabTexts)(box);
   }
 
   /* ---------- تابی دەقەکان ---------- */
@@ -182,7 +182,8 @@
 
     document.getElementById("add-doc").addEventListener("click", () => {
       const id = content.doctors.reduce((m, d) => Math.max(m, d.id), 0) + 1;
-      content.doctors.push({ id, name: "", spec: content.specialties[0] ? content.specialties[0].id : "", title: "", rating: 5, reviews: 0, price: 15000, exp: 1, langs: ["کوردی"], days: [0, 1, 2, 3, 4, 6], bio: "" });
+      const defSlots = (content.timeSlots && content.timeSlots.length) ? content.timeSlots.slice() : ["١٩:٠٠", "٢٠:٣٠"];
+      content.doctors.push({ id, name: "", spec: content.specialties[0] ? content.specialties[0].id : "", title: "", rating: 5, reviews: 0, price: 15000, exp: 1, langs: ["کوردی"], days: [0, 1, 2, 3, 4, 6], slots: defSlots, bio: "" });
       renderTab();
     });
 
@@ -205,6 +206,7 @@
       else if (["price", "exp", "reviews"].includes(f)) v = parseInt(v || "0", 10) || 0;
       else if (f === "rating") v = parseFloat(v || "0") || 0;
       else if (f === "langs") v = v.split(/[،,]/).map(s => s.trim()).filter(Boolean);
+      else if (f === "slots") v = v.split("\n").map(s => s.trim()).filter(Boolean);
       content.doctors[idx][f] = v;
     };
     cards.addEventListener("input", onEdit);
@@ -236,6 +238,9 @@
               ${(STR.days || []).map((dn, di) => `<label class="adm-day"><input type="checkbox" data-f="day" data-day="${di}" ${(d.days || []).includes(di) ? "checked" : ""}> ${dn}</label>`).join("")}
             </div>
           </div>
+          <label class="adm-field adm-full">کاتە بەردەستەکانی ئەم پزیشکە (هەر دێڕێک یەک کات — بۆ نموونە: ١٩:٠٠)
+            <textarea data-f="slots" rows="3">${esc((Array.isArray(d.slots) && d.slots.length ? d.slots : (content.timeSlots || [])).join("\n"))}</textarea>
+          </label>
           <label class="adm-field adm-full">کورتەی پزیشک<textarea data-f="bio" rows="2">${esc(d.bio)}</textarea></label>
         </div>
       </div>`;
@@ -282,19 +287,6 @@
       </div>`;
   }
 
-  /* ---------- تابی کاتەکان ---------- */
-  function tabSlots(box) {
-    box.innerHTML = `
-      <div class="adm-section">
-        <h3>کاتە بەردەستەکانی تۆمارکردن</h3>
-        <p class="muted">هەر دێڕێک یەک کات. بۆ نموونە: ٠٩:٠٠</p>
-        <textarea id="slots-ta" rows="10">${esc(content.timeSlots.join("\n"))}</textarea>
-      </div>`;
-    box.querySelector("#slots-ta").addEventListener("input", e => {
-      content.timeSlots = e.target.value.split("\n").map(s => s.trim()).filter(Boolean);
-    });
-  }
-
   /* ---------- تابی تۆمارکراوەکان ---------- */
   function tabBookings(box) {
     const list = (typeof getBookings === "function" ? getBookings() : []).slice().reverse();
@@ -302,7 +294,9 @@
       box.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><h3>هیچ تۆمارکردنێک نییە</h3></div>`;
       return;
     }
-    box.innerHTML = list.map(b => `
+    box.innerHTML = list.map(b => {
+      const confirmed = b.status === STATUS_CONFIRMED;
+      return `
       <div class="adm-booking" data-id="${b.id}">
         <div>
           <strong>${esc(b.userName) || "—"}</strong>
@@ -312,11 +306,16 @@
           ${b.symptoms ? `<p class="muted">📝 ${esc(b.symptoms)}</p>` : ""}
         </div>
         <div class="adm-booking-side">
-          <span class="badge badge-amber">${esc(b.status || "")}</span>
+          <span class="badge ${confirmed ? "badge-green" : "badge-amber"}">${esc(b.status || "")}</span>
+          ${!confirmed ? `<button class="btn btn-sm btn-primary adm-bk-ok" data-id="${b.id}">✓ پشتڕاستکردنەوە</button>` : ""}
+          ${b.meet ? `<a class="btn btn-sm btn-ghost" href="${esc(b.meet)}" target="_blank" rel="noopener">🎥 ژووری ڤیدیۆ</a>` : ""}
           <button class="btn btn-sm btn-ghost adm-bk-del" data-id="${b.id}">🗑 ${STR.admin.delete}</button>
         </div>
-      </div>`).join("");
+      </div>`;
+    }).join("");
     box.addEventListener("click", e => {
+      const ok = e.target.closest(".adm-bk-ok");
+      if (ok) { confirmBooking(ok.dataset.id); renderTab(); flash("پشتڕاستکرایەوە ✓"); return; }
       const del = e.target.closest(".adm-bk-del"); if (!del) return;
       if (confirm("ئەم تۆمارکردنە بسڕێتەوە؟")) { cancelBooking(del.dataset.id); renderTab(); }
     });

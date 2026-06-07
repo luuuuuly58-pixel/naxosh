@@ -74,6 +74,16 @@ service cloud.firestore {
       allow write: if signedIn() && request.auth.uid == uid;
     }
 
+    // Taken time slots: anyone signed in can see WHICH times are taken
+    // (no personal data inside) — and a slot can only ever be created once,
+    // so two patients can never book the same doctor at the same time.
+    match /taken/{id} {
+      allow read:   if signedIn();
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+    }
+
     // Chats: only the thread owner + the admin
     match /chats/{thread} {
       allow read, write: if isAdmin() || (signedIn() && thread.split('_')[0] == request.auth.uid);
@@ -133,5 +143,6 @@ const firebaseConfig = {
 | `site/content` | All texts, doctors, and time slots (admin edits) |
 | `site/settings` | Settings |
 | `bookings/…` | Bookings (each tagged with its owner's `ownerUid`) |
+| `taken/…` | Which doctor time slots are already booked (no personal data) |
 | `users/…` | User names and phone numbers |
 | `chats/…/messages/…` | Chat messages |

@@ -24,7 +24,7 @@ then open `http://localhost:8000` in your browser.
 | `specialties.html` | خزمەتگوزارییەکان — what works online + what doesn't (safety) |
 | `doctors.html` | پزیشکەکان — find a doctor, filter by specialty |
 | `doctor.html` | پڕۆفایل + تۆمارکردن — profile + booking |
-| `chat.html` | گفتوگۆ — simulated text consultation |
+| `chat.html` | گفتوگۆ — disabled for now (meetings happen via a video link after the doctor confirms) |
 | `appointments.html` | چاوپێکەوتنەکانم — your saved bookings |
 
 ## دەستکاریکردن / How to customize (no coding needed for most)

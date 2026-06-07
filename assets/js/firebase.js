@@ -119,6 +119,34 @@ window.NAXOSH_DB = (function () {
     return db.collection("bookings").doc(String(id)).delete()
       .catch(e => console.warn("[naxosh] removeBooking:", e));
   }
+  function updateBooking(id, fields) {
+    return db.collection("bookings").doc(String(id)).set(fields, { merge: true })
+      .catch(e => console.warn("[naxosh] updateBooking:", e));
+  }
+
+  /* ---------- کاتە گیراوەکان (taken) — ڕێگری لە دووبارە تۆمارکردنی هەمان کات ----------
+     هەر کاتێک تۆمار دەکرێت، بەڵگەنامەیەک بە کلیلی doctorId_date_time دروست دەکرێت.
+     ڕێساکان ڕێگە نادەن دوو کەس هەمان کلیل دروست بکەن — بۆیە کێبڕکێ ناکرێت. */
+  function takeSlot(slotKey, info) {
+    if (!curUid) return Promise.resolve(false);
+    return db.collection("taken").doc(slotKey)
+      .set({ ...info, ownerUid: curUid, createdAt: Date.now() })
+      .then(() => true)
+      .catch(e => { console.warn("[naxosh] takeSlot:", e.code || e); return false; });
+  }
+  function freeSlot(slotKey) {
+    if (!slotKey) return Promise.resolve();
+    return db.collection("taken").doc(slotKey).delete()
+      .catch(e => console.warn("[naxosh] freeSlot:", e));
+  }
+  function watchTaken(doctorId, cb) {
+    return db.collection("taken").where("doctorId", "==", doctorId)
+      .onSnapshot(snap => {
+        const list = [];
+        snap.forEach(doc => list.push(doc.data()));
+        cb(list);
+      }, err => console.warn("[naxosh] taken sync:", err));
+  }
   function pushUser(u) {
     if (!curUid) return Promise.resolve();
     return db.collection("users").doc(curUid)
@@ -170,7 +198,8 @@ window.NAXOSH_DB = (function () {
     uid: () => curUid,
     isAdmin: () => curIsAdmin,
     whenReady,
-    pushContent, pushSettings, pushBooking, removeBooking, pushUser,
+    pushContent, pushSettings, pushBooking, removeBooking, updateBooking, pushUser,
+    takeSlot, freeSlot, watchTaken,
     watchChat, sendChat,
     adminSignIn, signOutAdmin, changeAdminPassword
   };

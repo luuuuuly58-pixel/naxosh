@@ -169,13 +169,33 @@ Each doctor can have their own login and dashboard at **`doctor-panel.html`**
 bookings (patient name, phone, time), can confirm bookings, edit their
 **own working days + times + meeting-room link**, and change their password.
 
-**Meeting room:** each doctor creates one permanent room — at
-**meet.google.com** (Google Meet) or **whereby.com** (free, patients join in
-the browser with no account) — and pastes its link once in their dashboard
-("ڕۆژ و کاتەکانم" tab). Patients then get a 🎥 join button on their bookings.
-Both services make patients **knock**; the doctor admits only the scheduled
-patient, so a saved/shared link can't be used to intrude. If the link is ever
-abused, the doctor just creates a fresh room and pastes the new link.
+**Meeting room (admin sets it):** each doctor gets one permanent room link,
+pasted by the **admin** in the Doctors tab (🎥 field). Patients get a 🎥 join
+button on their bookings immediately after booking, with a notice to join at
+the scheduled time. The site's meeting page (`meeting.html`) behaves
+differently depending on which service the link is from:
+
+| Service | What patients experience |
+|---|---|
+| **Daily** (`yourname.daily.co/room`) | 🏆 Video opens **inside the Naxoş site** — no app, no account. |
+| **Whereby** (`whereby.com/room`) | Opens in its own tab; no account needed; doctor admits via knock. |
+| **Google Meet** | Opens in its own tab; patients need a Google account; doctor admits. |
+
+**To get the built-in (Daily) experience:**
+1. Go to **https://dashboard.daily.co** → sign up free (no credit card).
+2. It gives you a subdomain (e.g. `naxosh.daily.co`).
+3. **Rooms → Create room** — name it after the doctor with a random suffix
+   (e.g. `dr-lala-k83x` so it can't be guessed), privacy **Public**.
+4. Copy the room URL (`https://naxosh.daily.co/dr-lala-k83x`) and paste it
+   into the doctor's 🎥 field in the admin dashboard → **Save**.
+5. Free plan includes ~10,000 participant-minutes per month — far more than
+   a small clinic needs.
+
+Note: a Daily public room has no knock screen — anyone with the exact link
+can enter. Use an unguessable room name, and if a link ever leaks, create a
+new room and paste the new link (takes a minute, applies everywhere
+instantly). If you prefer knock-style control, use Whereby instead — it just
+won't be embedded inside the site.
 
 - **Create a doctor's login:** Admin dashboard → **Doctors** tab → in the
   doctor's card, fill **email + password** under 🔑 and click

@@ -263,6 +263,13 @@ textarea:focus { outline: none; border-color: var(--teal); }
 .success-note { color: var(--gray); font-size: 0.88rem; line-height: 1.8; margin-bottom: 14px; }
 .appt-wait { font-size: 0.76rem; max-width: 160px; text-align: center; }
 
+/* ---------- ژووری چاوپێکەوتن (meeting.html) ---------- */
+.meet-head { display: flex; align-items: center; gap: 12px; margin: 22px 0 14px; flex-wrap: wrap; }
+.meet-head strong { font-size: 1.05rem; }
+.meet-note { margin-inline-start: auto; background: var(--teal-light); color: var(--teal-dark); padding: 8px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; }
+.meet-frame { width: 100%; height: 74vh; border: 0; border-radius: var(--radius); background: #000; box-shadow: var(--shadow-lg); }
+.meet-tip { text-align: center; margin: 10px 0 26px; font-size: 0.82rem; }
+
 /* ---------- گفتوگۆ ---------- */
 .chat-shell { max-width: 720px; margin: 30px auto; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; height: 76vh; }
 .chat-header { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); background: var(--teal-dark); color: #fff; }

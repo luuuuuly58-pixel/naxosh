@@ -428,12 +428,66 @@ function showBookingSuccess(d, booking) {
       <p>چاوپێکەوتنت لەگەڵ <strong>${d.name}</strong></p>
       <p class="success-when">📅 ${booking.day} — 🕐 ${booking.time}</p>
       ${meet
-        ? `<p class="success-note">🎥 لە کاتی دیاریکراودا ئەم دوگمەیە دابگرە — داواکاریت دەنێردرێت و
-             پزیشک ڕێگەت پێدەدات بۆ چوونەژوورەوە. هەمیشە لە پەڕەی «چاوپێکەوتنەکانم»یشەوە دەستت دەگات.</p>
-           <a class="btn btn-primary btn-block" href="${meet}" target="_blank" rel="noopener">🎥 چوونە ناو چاوپێکەوتنی ڤیدیۆ</a>`
+        ? `<p class="success-note">🎥 لە کاتی دیاریکراودا ئەم دوگمەیە دابگرە بۆ چوونە ناو ژووری چاوپێکەوتن.
+             هەمیشە لە پەڕەی «چاوپێکەوتنەکانم»یشەوە دەستت دەگات.</p>
+           <a class="btn btn-primary btn-block" href="meeting.html?doctor=${d.id}">🎥 چوونە ناو چاوپێکەوتنی ڤیدیۆ</a>`
         : `<p class="success-note">📞 پزیشک لە کاتی دیاریکراودا پەیوەندیت پێوە دەکات.</p>`}
       <a class="btn btn-ghost btn-block" href="appointments.html">بینینی چاوپێکەوتنەکانم</a>
     </div>`;
+}
+
+/* ---------- پەیجی ژووری چاوپێکەوتن (meeting.html) ----------
+   ئەگەر ژووری پزیشک لە Daily بێت (daily.co) — ڤیدیۆکە ڕاستەوخۆ لەناو
+   ماڵپەڕەکەدا دەکرێتەوە. بۆ خزمەتگوزارییەکانی تر (Whereby/Meet کە ڕێگە
+   بە دانان لەناو ماڵپەڕ نادەن) دوگمەیەک دەردەکەوێت بۆ کردنەوەی ژوورەکە. */
+
+function initMeeting() {
+  const wrap = document.getElementById("meeting-root");
+  if (!wrap) return;
+  const d = DOCTORS.find(x => x.id === Number(qs("doctor"))) || DOCTORS[0];
+  const meet = docMeet(d.id);
+
+  // ئەگەر هەمان ژوور پێشتر کراوەتەوە، دووبارە بارینەکەرەوە (پەیوەندی نەپچڕێت)
+  if (wrap.dataset.meet === meet) return;
+  wrap.dataset.meet = meet;
+
+  const head = `
+    <div class="meet-head">
+      ${avatar(d.name, 44)}
+      <div><strong>${d.name}</strong><span class="muted"> ${d.title}</span></div>
+      <span class="meet-note">🕐 تکایە ڕێک لە کاتی دیاریکراودا بەشداربە</span>
+    </div>`;
+
+  if (!meet) {
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📞</div>
+        <h3>ژووری چاوپێکەوتن هێشتا دانەنراوە</h3>
+        <p>پزیشک لە کاتی دیاریکراودا پەیوەندیت پێوە دەکات.</p>
+        <a class="btn btn-ghost" href="appointments.html">گەڕانەوە بۆ چاوپێکەوتنەکانم</a>
+      </div>`;
+    return;
+  }
+
+  let host = "";
+  try { host = new URL(meet).hostname; } catch (_) {}
+  const embeddable = /(^|\.)daily\.co$/i.test(host);
+
+  if (embeddable) {
+    wrap.innerHTML = `${head}
+      <iframe class="meet-frame" src="${meet}"
+        allow="camera; microphone; fullscreen; display-capture; autoplay"
+        allowfullscreen></iframe>
+      <p class="muted meet-tip">ئەگەر داوای ڕێگەپێدانی کامێرا و مایکرۆفۆن کرا، «Allow» دابگرە.</p>`;
+  } else {
+    wrap.innerHTML = `${head}
+      <div class="empty-state">
+        <div class="empty-icon">🎥</div>
+        <h3>ژووری چاوپێکەوتن ئامادەیە</h3>
+        <p>ئەم ژوورە لە پەنجەرەی خۆیدا دەکرێتەوە — پزیشک ڕێگەت پێدەدات بۆ چوونەژوورەوە.</p>
+        <a class="btn btn-primary" href="${meet}" target="_blank" rel="noopener">چوونە ناو ژوورەکە</a>
+      </div>`;
+  }
 }
 
 /* ---------- پەیجی گفتوگۆ (chat.html) ---------- */
@@ -556,8 +610,8 @@ function initAppointments() {
       </div>
       <div class="appt-side">
         ${meet
-          ? `<a class="btn btn-sm btn-primary" href="${meet}" target="_blank" rel="noopener">🎥 چوونە ناو چاوپێکەوتن</a>
-             <span class="muted appt-wait">🕐 تکایە ڕێک لە کاتی دیاریکراودا بچۆ ژوورەوە — پزیشک ڕێگەت پێدەدات</span>`
+          ? `<a class="btn btn-sm btn-primary" href="meeting.html?doctor=${b.doctorId}">🎥 چوونە ناو چاوپێکەوتن</a>
+             <span class="muted appt-wait">🕐 تکایە ڕێک لە کاتی دیاریکراودا بچۆ ژوورەوە</span>`
           : `<span class="muted appt-wait">📞 پزیشک لە کاتی دیاریکراودا پەیوەندیت پێوە دەکات</span>`}
         <button class="btn btn-sm btn-ghost" data-cancel="${b.id}">هەڵوەشاندنەوە</button>
       </div>
@@ -631,7 +685,8 @@ document.addEventListener("DOMContentLoaded", () => {
     doctors: initDoctors,
     doctor: initDoctorProfile,
     chat: initChat,
-    appointments: initAppointments
+    appointments: initAppointments,
+    meeting: initMeeting
   }[page] || (() => {});
 
   renderChrome(page);

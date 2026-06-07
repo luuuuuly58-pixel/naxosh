@@ -26,6 +26,7 @@ then open `http://localhost:8000` in your browser.
 | `doctor.html` | پڕۆفایل + تۆمارکردن — profile + booking |
 | `chat.html` | گفتوگۆ — disabled for now (meetings happen via a video link after the doctor confirms) |
 | `appointments.html` | چاوپێکەوتنەکانم — your saved bookings |
+| `meeting.html` | ژووری چاوپێکەوتن — in-site video room (embeds Daily rooms; other services open in a new tab) |
 | `doctor-panel.html` | داشبۆردی پزیشک — each doctor's own login: their bookings, schedule, meeting link, password |
 | `admin.html` | داشبۆردی بەڕێوەبەر — site management |
 

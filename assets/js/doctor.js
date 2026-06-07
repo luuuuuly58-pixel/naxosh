@@ -133,7 +133,7 @@
           ${b.symptoms ? `<p class="muted">📝 ${esc(b.symptoms)}</p>` : ""}
         </div>
         <div class="adm-booking-side">
-          ${meet ? `<a class="btn btn-sm btn-primary" href="${esc(meet)}" target="_blank" rel="noopener">🎥 ژوورەکەم</a>` : ""}
+          ${meet ? `<a class="btn btn-sm btn-primary" href="meeting.html?doctor=${b.doctorId}">🎥 ژوورەکەم</a>` : ""}
           <button class="btn btn-sm btn-ghost dr-bk-del" data-id="${b.id}">🗑 ${STR.admin.delete}</button>
         </div>
       </div>`;

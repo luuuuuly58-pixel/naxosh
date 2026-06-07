@@ -369,7 +369,7 @@
           ${b.symptoms ? `<p class="muted">📝 ${esc(b.symptoms)}</p>` : ""}
         </div>
         <div class="adm-booking-side">
-          ${meet ? `<a class="btn btn-sm btn-ghost" href="${esc(meet)}" target="_blank" rel="noopener">🎥 ژووری پزیشک</a>` : ""}
+          ${meet ? `<a class="btn btn-sm btn-ghost" href="meeting.html?doctor=${b.doctorId}" target="_blank" rel="noopener">🎥 ژووری پزیشک</a>` : ""}
           <button class="btn btn-sm btn-ghost adm-bk-del" data-id="${b.id}">🗑 ${STR.admin.delete}</button>
         </div>
       </div>`;

@@ -111,7 +111,8 @@
       // ئەگەرنا دەستکارییە کۆنەکانی پزیشک خۆی دەستکاریی بەڕێوەبەر دادەپۆشێت
       if (window.NAXOSH_DB && NAXOSH_DB.active) {
         content.doctors.forEach(d =>
-          NAXOSH_DB.saveDoctorSettings(d.id, { days: d.days || [], slots: d.slots || [], meet: d.meet || "" }));
+          NAXOSH_DB.saveDoctorSettings(d.id, { days: d.days || [], slots: d.slots || [], meet: d.meet || "" })
+            .catch(e => console.warn("[naxosh] doctorSettings sync:", e)));
       }
       content = NAXOSH.snapshot(); flash(STR.admin.saved);
     });

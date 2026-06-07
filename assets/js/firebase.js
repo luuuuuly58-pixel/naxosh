@@ -245,9 +245,9 @@ window.NAXOSH_DB = (function () {
       .catch(e => { console.warn("[naxosh] listDoctorAccounts:", e); return {}; });
   }
   function saveDoctorSettings(doctorId, data) {
+    // هەڵە ناشاردرێتەوە — بانگکەر خۆی بڕیار دەدات چۆن پیشانی بدات
     return db.collection("doctorSettings").doc(String(doctorId))
-      .set({ ...data, doctorId, updatedAt: Date.now() }, { merge: true })
-      .catch(e => console.warn("[naxosh] saveDoctorSettings:", e));
+      .set({ ...data, doctorId, updatedAt: Date.now() }, { merge: true });
   }
 
   /* ---------- یارمەتیدەر ---------- */

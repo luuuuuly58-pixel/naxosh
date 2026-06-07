@@ -185,7 +185,8 @@
       // یەکسەر لە ناوخۆدا جێبەجێی بکە، پاشان بۆ هەور بینێرە
       me.days = days; me.slots = slots; me.meet = meet;
       Promise.resolve(NAXOSH_DB.saveDoctorSettings(me.id, { days, slots, meet }))
-        .then(() => flash(STR.dr.schedSaved));
+        .then(() => flash(STR.dr.schedSaved))
+        .catch(err => alert("نەتوانرا پاشەکەوت بکرێت — هەوڵ بدەرەوە.\n(" + (err.code || err.message || err) + ")"));
     });
   }
 

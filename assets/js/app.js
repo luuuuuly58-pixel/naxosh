@@ -470,12 +470,20 @@ function initMeeting() {
   }
 
   let host = "";
-  try { host = new URL(meet).hostname; } catch (_) {}
-  const embeddable = /(^|\.)daily\.co$/i.test(host);
+  try { host = new URL(meet).hostname.toLowerCase(); } catch (_) {}
+  // Daily (xxx.daily.co) و Whereby Embedded (xxx.whereby.com — بە ژێردۆمەین)
+  // ڕێگە بە پیشاندان لەناو ماڵپەڕدا دەدەن؛ whereby.com ی ئاسایی و Meet نا.
+  const isDaily = /(^|\.)daily\.co$/.test(host);
+  const isWherebyEmbedded = /\.whereby\.com$/.test(host) && host !== "www.whereby.com";
+  const embeddable = isDaily || isWherebyEmbedded;
 
   if (embeddable) {
+    let src = meet;
+    if (isWherebyEmbedded && !/[?&]embed\b/.test(src)) {
+      src += (src.includes("?") ? "&" : "?") + "embed";
+    }
     wrap.innerHTML = `${head}
-      <iframe class="meet-frame" src="${meet}"
+      <iframe class="meet-frame" src="${src}"
         allow="camera; microphone; fullscreen; display-capture; autoplay"
         allowfullscreen></iframe>
       <p class="muted meet-tip">ئەگەر داوای ڕێگەپێدانی کامێرا و مایکرۆفۆن کرا، «Allow» دابگرە.</p>`;

@@ -177,25 +177,33 @@ differently depending on which service the link is from:
 
 | Service | What patients experience |
 |---|---|
-| **Daily** (`yourname.daily.co/room`) | 🏆 Video opens **inside the Naxoş site** — no app, no account. |
-| **Whereby** (`whereby.com/room`) | Opens in its own tab; no account needed; doctor admits via knock. |
+| **Daily** (`yourname.daily.co/room`) | 🏆 Video opens **inside the Naxoş site** — no app, no account. Free ~10,000 min/month. |
+| **Whereby Embedded** (`yourname.whereby.com/room`) | 🏆 Also opens **inside the site**, with knock/admit. Free ~2,000 min/month. |
+| **Whereby regular** (`whereby.com/room`) | Opens in its own tab; no account needed; doctor admits via knock. |
 | **Google Meet** | Opens in its own tab; patients need a Google account; doctor admits. |
 
-**To get the built-in (Daily) experience:**
-1. Go to **https://dashboard.daily.co** → sign up free (no credit card).
+**Option A — Daily (most free minutes):**
+1. Go to **https://dashboard.daily.co** → sign up free (no credit card; skip
+   any paid add-on screens).
 2. It gives you a subdomain (e.g. `naxosh.daily.co`).
 3. **Rooms → Create room** — name it after the doctor with a random suffix
    (e.g. `dr-lala-k83x` so it can't be guessed), privacy **Public**.
 4. Copy the room URL (`https://naxosh.daily.co/dr-lala-k83x`) and paste it
    into the doctor's 🎥 field in the admin dashboard → **Save**.
-5. Free plan includes ~10,000 participant-minutes per month — far more than
-   a small clinic needs.
 
-Note: a Daily public room has no knock screen — anyone with the exact link
-can enter. Use an unguessable room name, and if a link ever leaks, create a
-new room and paste the new link (takes a minute, applies everywhere
-instantly). If you prefer knock-style control, use Whereby instead — it just
-won't be embedded inside the site.
+   Note: a Daily public room has no knock screen — anyone with the exact
+   link can enter. Use an unguessable name; if a link leaks, make a new room
+   and paste the new link (applies everywhere instantly).
+
+**Option B — Whereby Embedded (has knock/admit, fewer free minutes):**
+1. Go to **https://whereby.com/information/embedded/** → start with the free
+   **Explore** plan.
+2. You get a subdomain (e.g. `naxosh.whereby.com`) — create a room per doctor.
+3. In the Whereby Embedded dashboard, add your site to **Allowed domains**:
+   `luuuuuly58-pixel.github.io`
+   (without this, the video shows a blocked screen inside the site).
+4. Paste the room URL (`https://naxosh.whereby.com/dr-lala`) into the
+   doctor's 🎥 field in the admin dashboard → **Save**.
 
 - **Create a doctor's login:** Admin dashboard → **Doctors** tab → in the
   doctor's card, fill **email + password** under 🔑 and click

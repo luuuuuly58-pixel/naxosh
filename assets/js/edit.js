@@ -194,8 +194,23 @@
   document.addEventListener("naxosh:auth", () => setTimeout(refresh, 0));
   document.addEventListener("naxosh:bookings", () => setTimeout(refresh, 0));
 
-  document.addEventListener("DOMContentLoaded", () => setTimeout(() => {
+  // یەکەم جار + چەند هەوڵێکی دواتر — چونکە دۆخی بەڕێوەبەر بە درەنگ لە هەورەوە
+  // دیاری دەکرێت؛ بۆیە تا ١٠ چرکە بەدوای دۆخەکەدا دەگەڕێین.
+  function boot() {
     applyUiText();
     ensureFab();
-  }, 0));
+    let tries = 0;
+    const t = setInterval(() => {
+      if (editing) return;
+      ensureFab();
+      if (document.getElementById("nx-fab") || ++tries > 14) clearInterval(t);
+    }, 700);
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => setTimeout(boot, 0));
+  } else {
+    setTimeout(boot, 0);
+  }
+  // گەڕانەوە بۆ پەڕە (bfcache) — دووبارە پشکنین
+  window.addEventListener("pageshow", () => { if (!editing) ensureFab(); });
 })();

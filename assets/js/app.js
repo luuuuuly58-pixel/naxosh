@@ -120,7 +120,8 @@ function authArea() {
       <span class="auth-chip">👤 ${user.name}</span>
       <a href="#" class="auth-logout" onclick="NAXOSH.userLogout();location.reload();return false">${STR.auth.logout}</a>`;
   }
-  return "";
+  // دوگمەی چوونەژوورەوەی ناوەندی — بۆ نەخۆش و پزیشک و بەڕێوەبەر
+  return `<a href="#" class="auth-chip auth-login" onclick="openAuthModal();return false">🔓 ${STR.auth.login}</a>`;
 }
 
 function renderChrome(active) {
@@ -168,19 +169,40 @@ function renderChrome(active) {
 /* ---------- چوونەژوورەوەی بەکارهێنەر (ناو + تەلەفۆن) ---------- */
 
 function openAuthModal(onSuccess) {
+  onSuccess = typeof onSuccess === "function" ? onSuccess : function () {};
   const existing = NAXOSH.getUser() || { name: "", phone: "" };
+  const online = window.NAXOSH_DB && NAXOSH_DB.active;
+
   const overlay = el(`
     <div class="modal-overlay">
       <div class="modal">
         <button class="modal-close" aria-label="${STR.auth.cancel}">✕</button>
-        <h2>${STR.auth.loginTitle}</h2>
-        <p class="modal-sub">${STR.auth.loginSub}</p>
-        <label>${STR.auth.fullName}</label>
-        <input type="text" id="auth-name" value="${existing.name}" placeholder="${STR.auth.fullNamePh}">
-        <label>${STR.auth.phone}</label>
-        <input type="tel" id="auth-phone" value="${existing.phone}" placeholder="${STR.auth.phonePh}" dir="ltr">
-        <p class="auth-err" id="auth-err"></p>
-        <button class="btn btn-primary btn-block" id="auth-go">${STR.auth.continue}</button>
+
+        <!-- چوونەژوورەوەی نەخۆش -->
+        <div id="auth-patient">
+          <h2>${STR.auth.loginTitle}</h2>
+          <p class="modal-sub">${STR.auth.loginSub}</p>
+          <label>${STR.auth.fullName}</label>
+          <input type="text" id="auth-name" value="${existing.name}" placeholder="${STR.auth.fullNamePh}">
+          <label>${STR.auth.phone}</label>
+          <input type="tel" id="auth-phone" value="${existing.phone}" placeholder="${STR.auth.phonePh}" dir="ltr" inputmode="tel">
+          <p class="auth-err" id="auth-err"></p>
+          <button class="btn btn-primary btn-block" id="auth-go">${STR.auth.continue}</button>
+          <a href="#" class="auth-switch" id="to-staff">${STR.auth.staffLink}</a>
+        </div>
+
+        <!-- چوونەژوورەوەی پزیشک / بەڕێوەبەر -->
+        <div id="auth-staff" hidden>
+          <h2>${STR.auth.staffTitle}</h2>
+          <p class="modal-sub">${STR.auth.staffSub}</p>
+          ${online ? `<label>${STR.admin.email}</label>
+          <input type="email" id="staff-email" dir="ltr" autocomplete="username">` : ``}
+          <label>${STR.admin.password}</label>
+          <input type="password" id="staff-pw" dir="ltr" autocomplete="current-password">
+          <p class="auth-err" id="staff-err"></p>
+          <button class="btn btn-primary btn-block" id="staff-go">${STR.admin.enter}</button>
+          <a href="#" class="auth-switch" id="to-patient">${STR.auth.patientLink}</a>
+        </div>
       </div>
     </div>`);
 
@@ -188,17 +210,52 @@ function openAuthModal(onSuccess) {
   overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
   overlay.querySelector(".modal-close").addEventListener("click", close);
 
-  overlay.querySelector("#auth-go").addEventListener("click", () => {
+  const patientBox = overlay.querySelector("#auth-patient");
+  const staffBox = overlay.querySelector("#auth-staff");
+  overlay.querySelector("#to-staff").addEventListener("click", e => {
+    e.preventDefault(); patientBox.hidden = true; staffBox.hidden = false;
+    (overlay.querySelector("#staff-email") || overlay.querySelector("#staff-pw")).focus();
+  });
+  overlay.querySelector("#to-patient").addEventListener("click", e => {
+    e.preventDefault(); staffBox.hidden = true; patientBox.hidden = false;
+    overlay.querySelector("#auth-name").focus();
+  });
+
+  /* --- چوونەژوورەوەی نەخۆش --- */
+  function patientGo() {
     const name = overlay.querySelector("#auth-name").value.trim();
     const phone = overlay.querySelector("#auth-phone").value.trim();
     const err = overlay.querySelector("#auth-err");
-    if (!name) { err.textContent = STR.auth.needName; return; }
-    if (phone.replace(/\D/g, "").length < 7) { err.textContent = STR.auth.needPhone; return; }
+    if (name.split(/\s+/).filter(Boolean).length < 2) { err.textContent = STR.auth.needName; return; }
+    if (!validPhone(phone)) { err.textContent = STR.auth.needPhone; return; }
     NAXOSH.userLogin(name, phone);
     close();
     renderChrome(document.body.dataset.page);
     onSuccess();
-  });
+  }
+  overlay.querySelector("#auth-go").addEventListener("click", patientGo);
+  overlay.querySelector("#auth-phone").addEventListener("keydown", e => { if (e.key === "Enter") patientGo(); });
+
+  /* --- چوونەژوورەوەی پزیشک / بەڕێوەبەر --- */
+  function staffGo() {
+    const pw = overlay.querySelector("#staff-pw").value;
+    const err = overlay.querySelector("#staff-err");
+    const btn = overlay.querySelector("#staff-go");
+    if (online) {
+      const email = overlay.querySelector("#staff-email").value;
+      btn.disabled = true; err.textContent = "";
+      NAXOSH_DB.adminSignIn(email, pw).then(ok => {
+        btn.disabled = false;
+        if (ok) { close(); /* naxosh:auth مینۆ نوێ دەکاتەوە */ }
+        else err.textContent = STR.auth.staffWrong;
+      });
+    } else {
+      if (NAXOSH.adminLogin(pw)) { close(); renderChrome(document.body.dataset.page); }
+      else err.textContent = STR.auth.staffWrong;
+    }
+  }
+  overlay.querySelector("#staff-go").addEventListener("click", staffGo);
+  overlay.querySelector("#staff-pw").addEventListener("keydown", e => { if (e.key === "Enter") staffGo(); });
 
   document.body.appendChild(overlay);
   overlay.querySelector("#auth-name").focus();
@@ -234,6 +291,8 @@ function doctorCard(d) {
 function initDoctors() {
   const grid = document.getElementById("doc-grid");
   const filterBar = document.getElementById("filter-bar");
+  const toggle = document.getElementById("filter-toggle");
+  const toggleLabel = document.getElementById("filter-toggle-label");
   if (!grid) return;
 
   const preset = qs("spec");
@@ -244,11 +303,27 @@ function initDoctors() {
     `<button class="chip ${c.id === current ? 'chip-active' : ''}" data-id="${c.id}">${c.name}</button>`
   ).join("");
 
+  // ناوی فلتەری ئێستا لەسەر دوگمەکە پیشان بدە
+  function refreshLabel() {
+    if (!toggleLabel) return;
+    const active = chips.find(c => c.id === current);
+    toggleLabel.textContent = (current === "all" || !active) ? "فلتەر" : active.name;
+  }
+
   function render() {
     const list = current === "all" ? DOCTORS : DOCTORS.filter(d => d.spec === current);
     grid.innerHTML = list.length
       ? list.map(doctorCard).join("")
       : `<p class="empty">هیچ پزیشکێک نەدۆزرایەوە.</p>`;
+  }
+
+  // دوگمەی فلتەر — فلتەرەکان داپۆشراون تاکو دابگیردرێن
+  if (toggle) {
+    toggle.addEventListener("click", () => {
+      const open = filterBar.hasAttribute("hidden");
+      if (open) { filterBar.removeAttribute("hidden"); toggle.setAttribute("aria-expanded", "true"); toggle.classList.add("open"); }
+      else { filterBar.setAttribute("hidden", ""); toggle.setAttribute("aria-expanded", "false"); toggle.classList.remove("open"); }
+    });
   }
 
   filterBar.addEventListener("click", e => {
@@ -257,8 +332,12 @@ function initDoctors() {
     current = btn.dataset.id;
     [...filterBar.children].forEach(c => c.classList.toggle("chip-active", c === btn));
     render();
+    refreshLabel();
+    // پاش هەڵبژاردن، لیستی فلتەر دابپۆشە
+    if (toggle) { filterBar.setAttribute("hidden", ""); toggle.setAttribute("aria-expanded", "false"); toggle.classList.remove("open"); }
   });
 
+  refreshLabel();
   render();
 }
 
@@ -392,7 +471,8 @@ function initDoctorProfile() {
         time: chosenSlot,
         symptoms: document.getElementById("symptoms").value.trim(),
         userName: user ? user.name : "",
-        userPhone: user ? user.phone : ""
+        userPhone: user ? user.phone : "",
+        phoneKey: user ? user.phoneKey : ""
       };
       const slotJustTaken = () => {
         alert("ببورە، ئەم کاتە هەر ئێستا لەلایەن کەسێکی ترەوە گیرا. تکایە کاتێکی تر هەڵبژێرە.");
@@ -592,7 +672,14 @@ function nowTime() {
 function initAppointments() {
   const wrap = document.getElementById("appt-list");
   if (!wrap) return;
-  const list = getBookings().reverse();
+  // تەنها چاوپێکەوتنەکانی ئەم نەخۆشە پیشان بدە (بەپێی ژمارەی نۆرماڵکراو).
+  // ئەگەر بەکارهێنەر چووبێتە ژوورەوە، فلتەر بکە؛ ئەگەرنا هەمووی پیشان بدە.
+  const me = NAXOSH.getUser();
+  let list = getBookings();
+  if (me && me.phoneKey) {
+    list = list.filter(b => !b.phoneKey || b.phoneKey === me.phoneKey);
+  }
+  list = list.reverse();
 
   if (list.length === 0) {
     wrap.innerHTML = `

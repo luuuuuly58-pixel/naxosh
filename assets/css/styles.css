@@ -409,6 +409,52 @@ textarea:focus { outline: none; border-color: var(--teal); }
 .adm-flash { position: fixed; inset-block-end: 24px; inset-inline-start: 50%; transform: translateX(50%) translateY(20px); background: var(--green); color: #fff; padding: 12px 24px; border-radius: 999px; font-weight: 700; opacity: 0; pointer-events: none; transition: .25s; z-index: 200; }
 .adm-flash.show { opacity: 1; transform: translateX(50%) translateY(0); }
 
+/* ---------- دوگمەی فلتەر (داپۆشراو) ---------- */
+.filter-wrap { margin-bottom: 28px; }
+.filter-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px; border-radius: 999px;
+  border: 1px solid var(--line); background: #fff;
+  font-family: inherit; font-weight: 700; font-size: 0.9rem;
+  color: var(--ink); cursor: pointer; transition: .15s;
+}
+.filter-toggle:hover { border-color: var(--teal); color: var(--teal-dark); }
+.filter-toggle.open { background: var(--teal-light); border-color: var(--teal); color: var(--teal-dark); }
+.filter-caret { font-size: 0.75rem; transition: transform .15s; }
+.filter-toggle.open .filter-caret { transform: rotate(180deg); }
+.filter-wrap .filter-bar { margin-top: 12px; margin-bottom: 0; }
+.filter-bar[hidden] { display: none; }
+
+/* ---------- دوگمەی چوونەژوورەوەی ناوەندی ---------- */
+.auth-login { background: var(--teal); color: #fff; cursor: pointer; }
+.auth-login:hover { background: var(--teal-dark); }
+.auth-switch { display: block; text-align: center; margin-top: 16px; font-size: 0.85rem; font-weight: 600; color: var(--teal-dark); cursor: pointer; }
+.auth-switch:hover { text-decoration: underline; }
+
+/* ---------- دەستکاریکردنی ڕاستەوخۆ لەسەر پەڕە ---------- */
+.nx-fab {
+  position: fixed; inset-block-end: 20px; inset-inline-start: 20px; z-index: 300;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 20px; border-radius: 999px; border: none;
+  background: var(--ink); color: #fff;
+  font-family: inherit; font-weight: 700; font-size: 0.95rem;
+  cursor: pointer; box-shadow: var(--shadow-lg);
+}
+.nx-fab:hover { background: #000; }
+.nx-bar {
+  position: fixed; inset-block-end: 0; inset-inline: 0; z-index: 300;
+  display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;
+  background: #fff; border-top: 1px solid var(--line);
+  box-shadow: 0 -6px 20px rgba(15, 23, 42, .10); padding: 12px 16px;
+}
+.nx-bar-hint { color: var(--gray); font-size: 0.82rem; flex: 1; min-width: 200px; }
+body.nx-editing { padding-block-end: 76px; }
+.nx-editing .nx-editable {
+  outline: 2px dashed var(--teal); outline-offset: 2px;
+  border-radius: 4px; cursor: text; background: rgba(13, 148, 136, .05);
+}
+.nx-editing .nx-editable:focus { outline: 2px solid var(--teal); background: rgba(13, 148, 136, .10); }
+
 /* ---------- ڕسپۆنسیڤ ---------- */
 @media (max-width: 900px) {
   .hero-grid, .profile-wrap { grid-template-columns: 1fr; }

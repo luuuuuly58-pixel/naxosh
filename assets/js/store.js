@@ -29,6 +29,18 @@ const NAXOSH = (function () {
   }
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
 
+  /* ---------- دەقە دەستکاریکراوەکانی ڕاستەوخۆ (uiText) ----------
+     نەخشەیەک لە { دەقی بنەڕەت → دەقی نوێ } کە بەڕێوەبەر بە دەستکاری
+     ڕاستەوخۆ لەسەر پەڕە دروستی دەکات (edit.js). لێرە هەڵدەگیرێت تاکو
+     لەگەڵ ناوەڕۆکەکەی تردا بۆ هەور بنێردرێت و لە snapshot نەفەوتێت. */
+  let uiText = {};
+  function getUiText() { return uiText; }
+  function setUiText(map) {
+    uiText = map || {};
+    const c = snapshot();
+    saveContent(c);   // بۆ هەور و localStorage دەنێرێت
+  }
+
   /* ---------- ناوەڕۆک (texts + doctors + ...) ---------- */
   function loadOverrides() {
     try { return JSON.parse(localStorage.getItem(LS.content) || "null"); }
@@ -73,6 +85,7 @@ const NAXOSH = (function () {
       if (Array.isArray(c.notOnline) && typeof NOT_ONLINE !== "undefined") {
         NOT_ONLINE.length = 0; c.notOnline.forEach(n => NOT_ONLINE.push(n));
       }
+      if (c.uiText && typeof c.uiText === "object") uiText = c.uiText;
     }
     // خشتەی پزیشکەکان هەمیشە لە کۆتاییدا بەسەر داتاکەدا دەخرێت
     overlayDoctorSettings();
@@ -86,6 +99,7 @@ const NAXOSH = (function () {
     if (typeof DOCTORS !== "undefined") s.doctors = clone(DOCTORS);
     if (typeof TIME_SLOTS !== "undefined") s.timeSlots = clone(TIME_SLOTS);
     if (typeof NOT_ONLINE !== "undefined") s.notOnline = clone(NOT_ONLINE);
+    s.uiText = clone(uiText);   // دەقە دەستکاریکراوەکانیش بپارێزە (لە snapshot نەفەوتن)
     return s;
   }
 
@@ -128,6 +142,8 @@ const NAXOSH = (function () {
   }
   function userLogin(name, phone) {
     const u = { name: (name || "").trim(), phone: (phone || "").trim() };
+    // کلیلی نهێنی نۆرماڵکراو — تاکو هەمان ژمارە بە هەر شێوازێک بناسرێتەوە
+    if (typeof normalizePhone === "function") u.phoneKey = normalizePhone(phone);
     localStorage.setItem(LS.user, JSON.stringify(u));
     if (window.NAXOSH_DB && NAXOSH_DB.active) NAXOSH_DB.pushUser(u);
     return u;
@@ -139,6 +155,7 @@ const NAXOSH = (function () {
 
   return {
     snapshot, saveContent, resetContent, loadOverrides, applyContent, applyDoctorSettings,
+    getUiText, setUiText,
     isAdmin, adminLogin, adminLogout, adminPw, setAdminPw,
     getUser, userLogin, userLogout
   };

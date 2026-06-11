@@ -17,6 +17,9 @@
   // لەسەر داشبۆردەکان کار مەکە
   if (document.getElementById("admin-root") || document.getElementById("dr-root")) return;
 
+  // نیشانەی بارکردن + ڕێگەی پشکنین لە کۆنسۆڵ (ئەگەر دووبارە کێشە هەبوو)
+  window.NAXOSH_EDIT_LOADED = true;
+
   // تاگەکانی دەقدار کە دەکرێن دەستکاری بکرێن
   const TAGS = "h1,h2,h3,h4,h5,h6,p,span,a,button,small,strong,b,em,li,label,td,th,figcaption,blockquote,summary";
   // ئەمانە دەستکاری ناکرێن (کۆنترۆڵ و ئامێرەکانی ئینتەرفەیس)
@@ -83,11 +86,12 @@
     let fab = document.getElementById("nx-fab");
     if (!isAdmin) { if (fab) fab.remove(); if (editing) stopEditing(); return; }
     if (fab) return;
+    const label = (window.STR && STR.edit && STR.edit.start) ? STR.edit.start : "دەستکاری";
     fab = document.createElement("button");
     fab.id = "nx-fab";
     fab.className = "nx-fab";
     fab.type = "button";
-    fab.innerHTML = `✏️ <span>${STR.edit.start}</span>`;
+    fab.innerHTML = `✏️ <span>${label}</span>`;
     fab.addEventListener("click", startEditing);
     document.body.appendChild(fab);
   }
@@ -188,7 +192,9 @@
 
   /* ---------- بەستنەوە بە چاودێرییەکانەوە ---------- */
   function refresh() {
-    if (!editing) { applyUiText(); ensureFab(); }
+    if (editing) return;
+    ensureFab();                                          // دوگمە سەرەتا — نابێت بە دەق ببەسترێتەوە
+    try { applyUiText(); } catch (e) { console.warn("nx applyUiText:", e); }
   }
   document.addEventListener("naxosh:content", () => setTimeout(refresh, 0));
   document.addEventListener("naxosh:auth", () => setTimeout(refresh, 0));
@@ -197,13 +203,13 @@
   // یەکەم جار + چەند هەوڵێکی دواتر — چونکە دۆخی بەڕێوەبەر بە درەنگ لە هەورەوە
   // دیاری دەکرێت؛ بۆیە تا ١٠ چرکە بەدوای دۆخەکەدا دەگەڕێین.
   function boot() {
-    applyUiText();
-    ensureFab();
+    ensureFab();                                          // دوگمە سەرەتا — سەربەخۆ لە دەق
+    try { applyUiText(); } catch (e) { console.warn("nx applyUiText:", e); }
     let tries = 0;
     const t = setInterval(() => {
       if (editing) return;
       ensureFab();
-      if (document.getElementById("nx-fab") || ++tries > 14) clearInterval(t);
+      if (++tries > 28) clearInterval(t);                 // تا ٢٠ چرکە بەدوای دۆخی بەڕێوەبەردا دەگەڕێین
     }, 700);
   }
   if (document.readyState === "loading") {

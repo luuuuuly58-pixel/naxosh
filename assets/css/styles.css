@@ -327,10 +327,14 @@ textarea:focus { outline: none; border-color: var(--teal); }
 
 /* ---------- ناحیەی هەژمار (مینۆ) ---------- */
 .auth-area { display: inline-flex; align-items: center; gap: 8px; }
-.auth-chip { background: var(--teal-light); color: var(--teal-dark); padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 0.88rem; }
-.auth-admin { background: var(--ink); color: #fff; }
-.auth-logout { font-size: 0.85rem; font-weight: 600; color: var(--gray); padding: 8px 6px; }
-.auth-logout:hover { color: #b91c1c; }
+/* بە ‎.auth-area‎ سکۆپ کراون تاکو لەسەر ‎.nav-links a‎ (تایبەتمەندی 0,1,1)
+   سەربکەون. ئەگەرنا ‎.nav-links a‎ ڕەنگی دەق دەکات بە ‎--ink‎ و گۆشەکان دەکات بە
+   10px — کە وایکرد چیپی بەڕێوەبەر ببێتە سندوقێکی ڕەشی بەتاڵ (دەقی تۆخ لەسەر
+   پاشبنەمای تۆخ، نادیار). */
+.auth-area .auth-chip { background: var(--teal-light); color: var(--teal-dark); padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 0.88rem; }
+.auth-area .auth-admin { background: var(--ink); color: #fff; }
+.auth-area .auth-logout { font-size: 0.85rem; font-weight: 600; color: var(--gray); padding: 8px 6px; border-radius: 999px; }
+.auth-area .auth-logout:hover { color: #b91c1c; }
 
 /* ---------- مۆداڵی چوونەژوورەوە ---------- */
 .modal-overlay {
@@ -426,8 +430,8 @@ textarea:focus { outline: none; border-color: var(--teal); }
 .filter-bar[hidden] { display: none; }
 
 /* ---------- دوگمەی چوونەژوورەوەی ناوەندی ---------- */
-.auth-login { background: var(--teal); color: #fff; cursor: pointer; }
-.auth-login:hover { background: var(--teal-dark); }
+.auth-area .auth-login { background: var(--teal); color: #fff; cursor: pointer; }
+.auth-area .auth-login:hover { background: var(--teal-dark); }
 .auth-switch { display: block; text-align: center; margin-top: 16px; font-size: 0.85rem; font-weight: 600; color: var(--teal-dark); cursor: pointer; }
 .auth-switch:hover { text-decoration: underline; }
 

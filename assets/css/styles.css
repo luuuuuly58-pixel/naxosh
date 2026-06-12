@@ -247,8 +247,7 @@ section { padding: 56px 0; }
 .step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 999px; background: var(--teal); color: #fff; font-size: 0.8rem; font-weight: 800; flex: 0 0 auto; }
 .days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .day { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 2px; border: 1px solid var(--line); border-radius: 10px; background: #fff; cursor: pointer; font-family: inherit; font-size: 0.72rem; }
-.day b { font-size: 0.92rem; white-space: nowrap; }
-.day-mon { font-size: 0.66rem; font-weight: 600; opacity: 0.85; }
+.day-date { font-size: 0.72rem; font-weight: inherit; white-space: nowrap; }   /* وەک ناوی ڕۆژ — هەمان قەبارە و ستایل، ژمارە تۆختر نییە */
 .day-active { background: var(--teal); color: #fff; border-color: var(--teal); }
 .day-off, .day[disabled] { opacity: .4; cursor: not-allowed; text-decoration: line-through; background: var(--bg); }
 .slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }

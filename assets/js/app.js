@@ -397,7 +397,7 @@ function initDoctorProfile() {
     if (ok && firstAvail === null) firstAvail = i;
     const label = i === 0 ? "ئەمڕۆ" : dayNames[dt.getDay()];
     daysBox.appendChild(el(`<button class="day ${i === firstAvail ? 'day-active' : ''} ${ok ? '' : 'day-off'}" data-i="${i}" ${ok ? '' : 'disabled'}>
-      <span>${label}</span><b>${toKurdishDigits(dt.getDate())}ی <span class="day-mon">مانگ</span></b></button>`));
+      <span>${label}</span><span class="day-date">${toKurdishDigits(dt.getDate())}ی مانگ</span></button>`));
   }
   chosenDay = firstAvail;
   if (firstAvail === null) {

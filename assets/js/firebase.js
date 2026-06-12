@@ -33,8 +33,9 @@ window.NAXOSH_DB = (function () {
   let curUid = null;
   let curRole = null;             // "patient" | "doctor" | "admin"
   let curDoctorId = null;         // ناسنامەی پزیشک ئەگەر ڕۆڵەکە پزیشک بێت
-  let publicAttached = false;     // گوێگری ناوەڕۆکی گشتی (content/doctorSettings) — یەکسەر
-  let staticAttached = false;     // گوێگری ڕێکخستن (adminPw) — دوای ناسنامە، تەنها جارێک
+  let contentAttached = false;     // گوێگری دەقی ماڵپەڕ — هەڵە؟ دووبارە هەوڵ دەدرێتەوە
+  let docSettingsAttached = false; // گوێگری خشتەی پزیشکان — هەڵە؟ دووبارە هەوڵ دەدرێتەوە
+  let staticAttached = false;      // گوێگری ڕێکخستن (adminPw) — دوای ناسنامە، تەنها جارێک
   let unsubBookings = null;
   const readyQueue = [];          // فەرمانەکان کە چاوەڕێی ناسنامەن
 
@@ -48,26 +49,34 @@ window.NAXOSH_DB = (function () {
      «تەزووی دەقی سەرەتایی» بۆ یەکەم سەردانکەر لادەبات (پێویستی بە یاسای
      خوێندنەوەی گشتی هەیە لەسەر site/content و doctorSettings — بڕوانە FIREBASE-SETUP.md). */
   function attachPublic() {
-    if (publicAttached) return;
-    publicAttached = true;
-
-    db.collection("site").doc("content").onSnapshot(snap => {
-      if (!snap.exists) return;
-      const c = snap.data();
-      try { localStorage.setItem(LS.content, JSON.stringify(c)); } catch (_) {}
-      if (window.NAXOSH && typeof NAXOSH.applyContent === "function") NAXOSH.applyContent(c);
-      emit("naxosh:content", c);
-    }, err => console.warn("[naxosh] content sync:", err));
+    // دەقی ماڵپەڕ
+    if (!contentAttached) {
+      contentAttached = true;
+      db.collection("site").doc("content").onSnapshot(snap => {
+        if (!snap.exists) return;
+        const c = snap.data();
+        try { localStorage.setItem(LS.content, JSON.stringify(c)); } catch (_) {}
+        if (window.NAXOSH && typeof NAXOSH.applyContent === "function") NAXOSH.applyContent(c);
+        emit("naxosh:content", c);
+      }, err => {
+        // ئەگەر یاسای خوێندنەوەی گشتی هێشتا بڵاو نەکراوەتەوە، پێش ناسنامە هەڵە دەدات.
+        // contentAttached دەکەینەوە false تاکو finishAuth (دوای ناسنامە) دووبارە هەوڵبدات.
+        console.warn("[naxosh] content sync:", err); contentAttached = false;
+      });
+    }
 
     // خشتەی پزیشکەکان (ڕۆژ و کاتەکان کە پزیشک خۆی دەستکاری دەکات)
-    db.collection("doctorSettings").onSnapshot(snap => {
-      const map = {};
-      snap.forEach(doc => { map[doc.id] = doc.data(); });
-      if (window.NAXOSH && typeof NAXOSH.applyDoctorSettings === "function") {
-        NAXOSH.applyDoctorSettings(map);
-      }
-      emit("naxosh:content", null);
-    }, err => console.warn("[naxosh] doctorSettings sync:", err));
+    if (!docSettingsAttached) {
+      docSettingsAttached = true;
+      db.collection("doctorSettings").onSnapshot(snap => {
+        const map = {};
+        snap.forEach(doc => { map[doc.id] = doc.data(); });
+        if (window.NAXOSH && typeof NAXOSH.applyDoctorSettings === "function") {
+          NAXOSH.applyDoctorSettings(map);
+        }
+        emit("naxosh:content", null);
+      }, err => { console.warn("[naxosh] doctorSettings sync:", err); docSettingsAttached = false; });
+    }
   }
 
   /* ---------- گوێگری ڕێکخستن (adminPw — نهێنی، تەنها دوای ناسنامە) ---------- */
@@ -106,6 +115,7 @@ window.NAXOSH_DB = (function () {
   function finishAuth() {
     attachSettings();
     attachBookings();
+    attachPublic();   // دووبارە هەوڵ بدە — ئەگەر پێش ناسنامە سەرکەوتوو نەبوو (یاسای کۆن)
 
     // فەرمانە چاوەڕێکراوەکان جێبەجێ بکە
     while (readyQueue.length) { try { readyQueue.shift()(curUid); } catch (_) {} }

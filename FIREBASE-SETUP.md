@@ -69,9 +69,16 @@ service cloud.firestore {
         && !isDoctor();
     }
 
-    // Site content: any signed-in visitor can read; only the admin can change it
-    match /site/{doc} {
-      allow read:  if signedIn();
+    // Site CONTENT (all texts, doctors, time slots): PUBLIC read so first-time
+    // visitors see the real text instantly with no sign-in wait. No secrets here
+    // — it's exactly what the website already shows everyone.
+    match /site/content {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+    // Site SETTINGS (admin password): stays PRIVATE — admin only.
+    match /site/settings {
+      allow read:  if isAdmin();
       allow write: if isAdmin();
     }
 
@@ -81,10 +88,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Doctor schedules (working days + times): everyone can read,
-    // only the admin or that doctor can change them
+    // Doctor schedules (working days + times): PUBLIC read so the booking
+    // calendar shows correctly on a cold load; only the admin or that doctor
+    // can change them.
     match /doctorSettings/{id} {
-      allow read:           if signedIn();
+      allow read:           if true;
       allow create, update: if isAdmin() || (isDoctor() && request.resource.data.doctorId == docId());
       allow delete:         if isAdmin();
     }

@@ -33,7 +33,8 @@ window.NAXOSH_DB = (function () {
   let curUid = null;
   let curRole = null;             // "patient" | "doctor" | "admin"
   let curDoctorId = null;         // ناسنامەی پزیشک ئەگەر ڕۆڵەکە پزیشک بێت
-  let staticAttached = false;     // گوێگرە نەگۆڕەکان (content/settings) تەنها جارێک
+  let publicAttached = false;     // گوێگری ناوەڕۆکی گشتی (content/doctorSettings) — یەکسەر
+  let staticAttached = false;     // گوێگری ڕێکخستن (adminPw) — دوای ناسنامە، تەنها جارێک
   let unsubBookings = null;
   const readyQueue = [];          // فەرمانەکان کە چاوەڕێی ناسنامەن
 
@@ -41,10 +42,14 @@ window.NAXOSH_DB = (function () {
     try { document.dispatchEvent(new CustomEvent(name, { detail })); } catch (_) {}
   }
 
-  /* ---------- گوێگری ناوەڕۆک و ڕێکخستن (تەنها جارێک) ---------- */
-  function attachStatic() {
-    if (staticAttached) return;
-    staticAttached = true;
+  /* ---------- گوێگری ناوەڕۆکی گشتی (خوێندنەوەی ئاشکرا — یەکسەر، بەبێ چاوەڕوانی ناسنامە) ----------
+     ناوەڕۆکی ماڵپەڕ (دەق + خشتەی پزیشکان) خوێندنەوەی گشتییە، بۆیە لە کاتی
+     بارکردندا یەکسەر گوێی لێدەگرین — بەبێ چاوەڕوانی چوونەژوورەوەی نهێنی. ئەمە
+     «تەزووی دەقی سەرەتایی» بۆ یەکەم سەردانکەر لادەبات (پێویستی بە یاسای
+     خوێندنەوەی گشتی هەیە لەسەر site/content و doctorSettings — بڕوانە FIREBASE-SETUP.md). */
+  function attachPublic() {
+    if (publicAttached) return;
+    publicAttached = true;
 
     db.collection("site").doc("content").onSnapshot(snap => {
       if (!snap.exists) return;
@@ -53,14 +58,6 @@ window.NAXOSH_DB = (function () {
       if (window.NAXOSH && typeof NAXOSH.applyContent === "function") NAXOSH.applyContent(c);
       emit("naxosh:content", c);
     }, err => console.warn("[naxosh] content sync:", err));
-
-    db.collection("site").doc("settings").onSnapshot(snap => {
-      if (!snap.exists) return;
-      const s = snap.data();
-      if (s && typeof s.adminPw === "string" && s.adminPw) {
-        try { localStorage.setItem(LS.adminPw, s.adminPw); } catch (_) {}
-      }
-    }, err => console.warn("[naxosh] settings sync:", err));
 
     // خشتەی پزیشکەکان (ڕۆژ و کاتەکان کە پزیشک خۆی دەستکاری دەکات)
     db.collection("doctorSettings").onSnapshot(snap => {
@@ -71,6 +68,20 @@ window.NAXOSH_DB = (function () {
       }
       emit("naxosh:content", null);
     }, err => console.warn("[naxosh] doctorSettings sync:", err));
+  }
+
+  /* ---------- گوێگری ڕێکخستن (adminPw — نهێنی، تەنها دوای ناسنامە) ---------- */
+  function attachSettings() {
+    if (staticAttached) return;
+    staticAttached = true;
+
+    db.collection("site").doc("settings").onSnapshot(snap => {
+      if (!snap.exists) return;
+      const s = snap.data();
+      if (s && typeof s.adminPw === "string" && s.adminPw) {
+        try { localStorage.setItem(LS.adminPw, s.adminPw); } catch (_) {}
+      }
+    }, err => console.warn("[naxosh] settings sync:", err));
   }
 
   /* ---------- گوێگری تۆمارکردن (گۆڕاو بەپێی ڕۆڵ) ----------
@@ -93,7 +104,7 @@ window.NAXOSH_DB = (function () {
 
   /* ---------- گۆڕانی دۆخی ناسنامە ---------- */
   function finishAuth() {
-    attachStatic();
+    attachSettings();
     attachBookings();
 
     // فەرمانە چاوەڕێکراوەکان جێبەجێ بکە
@@ -101,6 +112,9 @@ window.NAXOSH_DB = (function () {
 
     emit("naxosh:auth", { uid: curUid, role: curRole, isAdmin: curRole === "admin" });
   }
+
+  // یەکسەر گوێ لە ناوەڕۆکی گشتی بگرە — بەبێ چاوەڕوانی ناسنامە (تەزووی دەق لادەبات)
+  attachPublic();
 
   auth.onAuthStateChanged(user => {
     if (!user) {

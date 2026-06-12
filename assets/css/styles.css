@@ -230,7 +230,7 @@ section { padding: 56px 0; }
 .badge-amber { background: #fef3c7; color: #92400e; }
 
 /* ---------- پڕۆفایلی پزیشک + تۆمارکردن ---------- */
-.profile-wrap { display: grid; grid-template-columns: 1fr 380px; gap: 26px; align-items: start; }
+.profile-wrap { display: grid; grid-template-columns: 380px 1fr; gap: 26px; align-items: start; }
 .profile-card, .booking-card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); }
 .profile-head { display: flex; gap: 18px; align-items: center; margin-bottom: 18px; flex-wrap: wrap; }
 .profile-head h1 { font-size: 1.5rem; }
@@ -239,9 +239,12 @@ section { padding: 56px 0; }
 .profile-facts li { padding: 10px 14px; background: var(--bg); border-radius: 10px; font-size: 0.92rem; }
 .treats-box strong { display: block; margin-bottom: 10px; }
 
-.booking-card { position: sticky; top: 20px; }
-.booking-card h2 { font-size: 1.25rem; margin-bottom: 16px; }
-.booking-card label { display: block; font-weight: 700; font-size: 0.9rem; margin: 14px 0 8px; }
+.booking-card { position: sticky; top: 20px; order: -1; }   /* order: -1 → بۆکسی ڕۆژ/کات یەکەم دێت، پرۆفایلی پزیشک دوای ئەو */
+.booking-card h2 { font-size: 1.25rem; margin-bottom: 6px; }
+.book-intro { color: var(--gray); font-size: 0.9rem; line-height: 1.7; margin-bottom: 6px; }
+.booking-card label { display: block; font-weight: 700; font-size: 0.9rem; margin: 16px 0 8px; }
+.book-step { display: flex; align-items: center; gap: 8px; }
+.step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 999px; background: var(--teal); color: #fff; font-size: 0.8rem; font-weight: 800; flex: 0 0 auto; }
 .days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .day { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border: 1px solid var(--line); border-radius: 10px; background: #fff; cursor: pointer; font-family: inherit; font-size: 0.72rem; }
 .day b { font-size: 1rem; }
@@ -260,7 +263,8 @@ textarea:focus { outline: none; border-color: var(--teal); }
 .success-icon { font-size: 3rem; margin-bottom: 8px; }
 .success h2 { color: var(--green); margin-bottom: 10px; }
 .success-when { background: var(--teal-light); color: var(--teal-dark); padding: 12px; border-radius: 12px; font-weight: 700; margin: 14px 0; }
-.success-note { color: var(--gray); font-size: 0.88rem; line-height: 1.8; margin-bottom: 14px; }
+/* ئاگاداریی گرنگ — بۆکسێکی دیار (کارەمەیی) تاکو نەخۆش چۆنیەتی چوونەژوورەوە بزانێت */
+.success-note { background: #fffbeb; color: #92400e; border: 1px solid var(--amber); border-radius: 12px; padding: 14px 16px; font-size: 0.95rem; font-weight: 600; line-height: 1.75; margin-bottom: 14px; text-align: start; }
 .appt-wait { font-size: 0.76rem; max-width: 160px; text-align: center; }
 
 /* ---------- ژووری چاوپێکەوتن (meeting.html) ---------- */

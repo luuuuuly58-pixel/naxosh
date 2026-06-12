@@ -185,7 +185,7 @@ function openAuthModal(onSuccess) {
           <label>${STR.auth.fullName}</label>
           <input type="text" id="auth-name" value="${existing.name}" placeholder="${STR.auth.fullNamePh}">
           <label>${STR.auth.phone}</label>
-          <input type="tel" id="auth-phone" value="${existing.phone}" placeholder="${STR.auth.phonePh}" dir="ltr" inputmode="tel">
+          <input type="tel" id="auth-phone" value="${existing.phone}" placeholder="0750 123 4567" dir="ltr" inputmode="tel">
           <p class="auth-err" id="auth-err"></p>
           <button class="btn btn-primary btn-block" id="auth-go">${STR.auth.continue}</button>
           <a href="#" class="auth-switch" id="to-staff">${STR.auth.staffLink}</a>
@@ -375,11 +375,12 @@ function initDoctorProfile() {
 
     <div class="booking-card" id="booking-card">
       <h2>تۆمارکردنی چاوپێکەوتن</h2>
-      <label>ڕۆژ هەڵبژێرە</label>
+      <p class="book-intro">لێرە ڕۆژ و کاتی چاوپێکەوتنەکەت دیاری بکە: سەرەتا ڕۆژێک، پاشان کاتێک هەڵبژێرە، ئینجا دوگمەی سەوز دابگرە.</p>
+      <label class="book-step"><span class="step-num">١</span> ڕۆژێک هەڵبژێرە</label>
       <div class="days" id="days"></div>
-      <label>کات هەڵبژێرە</label>
+      <label class="book-step"><span class="step-num">٢</span> کاتێک هەڵبژێرە</label>
       <div class="slots" id="slots"></div>
-      <label>کورتە باسی نیشانەکانت (ئارەزوومەندانە)</label>
+      <label class="book-step"><span class="step-num">٣</span> کورتە باسی نیشانەکانت (ئارەزوومەندانە)</label>
       <textarea id="symptoms" rows="3" placeholder="بۆ نموونە: لە دوو ڕۆژە سەرئێشە و تام هەیە..."></textarea>
       <button class="btn btn-primary btn-block" id="confirm-btn">پشتڕاستکردنەوەی تۆمارکردن</button>
     </div>`;

@@ -59,7 +59,7 @@ const STR = {
     fullName: "ناوی سیانیت بنووسە",
     fullNamePh: "بۆ نموونە: ئاسۆ ئەحمەد ڕەشید",
     phone: "ژمارەی تەلەفۆن",
-    phonePh: "07XX XXX XXXX",
+    phonePh: "0750 123 4567",
     continue: "بەردەوامبوون",
     cancel: "هەڵوەشاندنەوە",
     logout: "چوونەدەرەوە",

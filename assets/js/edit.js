@@ -27,7 +27,13 @@
 
   let editing = false;
 
-  function getMap() { return (window.NAXOSH && NAXOSH.getUiText) ? NAXOSH.getUiText() : {}; }
+  /* گرنگ: store.js دەکات `const NAXOSH = …` — کە لە سکریپتێکی ئاساییدا
+     گلۆباڵێکی لێکسیکاڵە و **لەسەر window نییە**. بۆیە `window.NAXOSH`
+     هەمیشە undefined بوو، کە وایکرد isAdmin هەمیشە false بێت و FAB
+     هەرگیز دروست نەبێت. ئەمە ڕاستەوخۆ NAXOSH-ی لێکسیکاڵ وەردەگرێت. */
+  function NX() { return (typeof NAXOSH !== "undefined") ? NAXOSH : null; }
+
+  function getMap() { const n = NX(); return (n && n.getUiText) ? n.getUiText() : {}; }
 
   /* ئەو ئەلیمێنتانەی تەنها دەقیان تێدایە (منداڵی ئەلیمێنتیان نییە) و دەق هەیە */
   function editableEls() {
@@ -82,7 +88,8 @@
 
   /* ---------- دوگمەی شناوەر (FAB) ---------- */
   function ensureFab() {
-    const isAdmin = window.NAXOSH && NAXOSH.isAdmin && NAXOSH.isAdmin();
+    const n = NX();
+    const isAdmin = !!(n && n.isAdmin && n.isAdmin());
     let fab = document.getElementById("nx-fab");
     if (!isAdmin) { if (fab) fab.remove(); if (editing) stopEditing(); return; }
     if (fab) return;
@@ -145,7 +152,7 @@
       if (val && val !== def) map[key] = val;
       else delete map[key];        // گەڕاوەتەوە بۆ بنەڕەت — override لاببە
     });
-    if (window.NAXOSH && NAXOSH.setUiText) NAXOSH.setUiText(map);
+    const n = NX(); if (n && n.setUiText) n.setUiText(map);
     stopEditing();
     applyUiText();
     flash(STR.edit.saved);
@@ -218,15 +225,16 @@
         "font:12px/1.5 monospace;padding:8px 10px;border-radius:8px;direction:ltr;text-align:left;max-width:90vw;white-space:pre";
       document.body.appendChild(d);
     }
-    const admin = !!(window.NAXOSH && NAXOSH.isAdmin && NAXOSH.isAdmin());
+    const n = NX();
+    const admin = !!(n && n.isAdmin && n.isAdmin());
     d.textContent =
       "loaded=" + (window.NAXOSH_EDIT_LOADED === true) +
       "\nadmin=" + admin +
       "\nediting=" + editing +
       "\nfab=" + !!document.getElementById("nx-fab") +
       "\nbar=" + !!document.getElementById("nx-bar") +
-      "\nNAXOSH=" + (typeof window.NAXOSH) +
-      "\nisAdminFn=" + (window.NAXOSH && typeof NAXOSH.isAdmin);
+      "\nNAXOSH=" + (typeof NAXOSH !== "undefined" ? "ok" : "MISSING") +
+      "\nisAdminFn=" + (n && typeof n.isAdmin);
   }
 
   // یەکەم جار + لێدانی بەردەوام — چونکە دۆخی بەڕێوەبەر بە درەنگ لە هەورەوە

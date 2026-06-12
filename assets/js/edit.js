@@ -190,27 +190,59 @@
     setTimeout(() => n.classList.remove("show"), 1800);
   }
 
+  /* ئەگەر دۆخی «دەستکاری» گیر بووە بەبێ تووڵامرازی #nx-bar، ڕاستی بکەرەوە.
+     ئەمە ڕێگری دەکات لە دۆخێکی گیراو کە FAB-ەکە بۆ هەتاهەتایە بشارێتەوە. */
+  function healStuckEditing() {
+    if (editing && !document.getElementById("nx-bar")) editing = false;
+  }
+
   /* ---------- بەستنەوە بە چاودێرییەکانەوە ---------- */
   function refresh() {
-    if (editing) return;
+    healStuckEditing();
     ensureFab();                                          // دوگمە سەرەتا — نابێت بە دەق ببەسترێتەوە
+    if (editing) return;                                  // لە دۆخی دەستکاری دەق دووبارە مەنووسە
     try { applyUiText(); } catch (e) { console.warn("nx applyUiText:", e); }
   }
   document.addEventListener("naxosh:content", () => setTimeout(refresh, 0));
   document.addEventListener("naxosh:auth", () => setTimeout(refresh, 0));
   document.addEventListener("naxosh:bookings", () => setTimeout(refresh, 0));
 
-  // یەکەم جار + چەند هەوڵێکی دواتر — چونکە دۆخی بەڕێوەبەر بە درەنگ لە هەورەوە
-  // دیاری دەکرێت؛ بۆیە تا ١٠ چرکە بەدوای دۆخەکەدا دەگەڕێین.
+  /* ---------- پلێتەی پشکنین (تەنها ئەگەر nxdebug لە URL بێت) ---------- */
+  function debugBadge() {
+    if (location.search.indexOf("nxdebug") < 0 && location.hash.indexOf("nxdebug") < 0) return;
+    let d = document.getElementById("nx-debug");
+    if (!d) {
+      d = document.createElement("div");
+      d.id = "nx-debug";
+      d.style.cssText = "position:fixed;bottom:8px;left:8px;z-index:2147483647;background:#111;color:#0f0;" +
+        "font:12px/1.5 monospace;padding:8px 10px;border-radius:8px;direction:ltr;text-align:left;max-width:90vw;white-space:pre";
+      document.body.appendChild(d);
+    }
+    const admin = !!(window.NAXOSH && NAXOSH.isAdmin && NAXOSH.isAdmin());
+    d.textContent =
+      "loaded=" + (window.NAXOSH_EDIT_LOADED === true) +
+      "\nadmin=" + admin +
+      "\nediting=" + editing +
+      "\nfab=" + !!document.getElementById("nx-fab") +
+      "\nbar=" + !!document.getElementById("nx-bar") +
+      "\nNAXOSH=" + (typeof window.NAXOSH) +
+      "\nisAdminFn=" + (window.NAXOSH && typeof NAXOSH.isAdmin);
+  }
+
+  // یەکەم جار + لێدانی بەردەوام — چونکە دۆخی بەڕێوەبەر بە درەنگ لە هەورەوە
+  // دیاری دەکرێت. پێشتر پاش ٢٠ چرکە دەوەستا؛ ئێستا بۆ هەتاهەتایە بەردەوامە
+  // (بەڵام هێواش) تا دڵنیابین FAB دروست دەبێت کاتێک دۆخی بەڕێوەبەر دێت.
   function boot() {
-    ensureFab();                                          // دوگمە سەرەتا — سەربەخۆ لە دەق
-    try { applyUiText(); } catch (e) { console.warn("nx applyUiText:", e); }
-    let tries = 0;
-    const t = setInterval(() => {
-      if (editing) return;
+    refresh();
+    debugBadge();
+    // لێدانێکی بەردەوام — هەرگیز ناوەستێت. ensureFab خێرایە کاتێک FAB هەیە
+    // (یەکسەر دەگەڕێتەوە)، بۆیە کۆستی نییە؛ بەڵام مسۆگەری دەکات کە FAB
+    // دروست دەبێت هەرکاتێک دۆخی بەڕێوەبەر بگاتە دی — تەنانەت دوای ٢٠ چرکەش.
+    setInterval(() => {
+      healStuckEditing();
       ensureFab();
-      if (++tries > 28) clearInterval(t);                 // تا ٢٠ چرکە بەدوای دۆخی بەڕێوەبەردا دەگەڕێین
-    }, 700);
+      debugBadge();
+    }, 1000);
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => setTimeout(boot, 0));
@@ -218,5 +250,5 @@
     setTimeout(boot, 0);
   }
   // گەڕانەوە بۆ پەڕە (bfcache) — دووبارە پشکنین
-  window.addEventListener("pageshow", () => { if (!editing) ensureFab(); });
+  window.addEventListener("pageshow", () => { healStuckEditing(); ensureFab(); });
 })();

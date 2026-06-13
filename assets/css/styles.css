@@ -514,10 +514,12 @@ body.has-tabbar { padding-bottom: 78px; }
 }
 .app-title { text-align: center; font-weight: 800; font-size: 1.15rem; color: var(--ink); }
 .app-back {
-  width: 46px; height: 46px; border: none; background: none; cursor: pointer;
-  color: var(--teal-dark); border-radius: 12px;
+  width: 40px; height: 40px; border: none; cursor: pointer;
+  background: var(--teal-light); color: var(--teal-dark); border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
+  transition: .12s;
 }
+.app-back:active { transform: scale(.93); }
 .app-back:hover { background: var(--teal-light); }
 .appbar-logo { width: 40px; height: 40px; display: block; margin: 0 auto; }
 

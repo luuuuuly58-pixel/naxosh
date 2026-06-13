@@ -17,8 +17,8 @@ function qs(name) {
 /* ئایکۆنی فلتەر (سلایدەرەکان) — ڕەنگەکەی لە دوگمەکەوە وەردەگرێت */
 const FILTER_ICON = `<svg class="filter-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><circle cx="9" cy="9" r="2.6" fill="#fff"/><circle cx="15" cy="15" r="2.6" fill="#fff"/></svg>`;
 
-/* ئایکۆنی گەڕانەوە (تیرێکی ڕێک بۆ لای ڕاست — ئاراستەی گەڕانەوە لە RTL) */
-const BACK_ICON = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="13 5 20 12 13 19"/></svg>`;
+/* ئایکۆنی گەڕانەوە (چیڤرۆن بۆ لای ڕاست — ئاراستەی گەڕانەوە لە RTL) */
+const BACK_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg>`;
 
 /* تۆمارکردنی سێرڤیس وۆرکەر — تاکو ماڵپەڕ ببێتە ئەپێکی دامەزراندنی (PWA) */
 if ("serviceWorker" in navigator) {

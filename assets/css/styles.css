@@ -515,7 +515,8 @@ body.has-tabbar { padding-bottom: 78px; }
 .app-title { text-align: center; font-weight: 800; font-size: 1.15rem; color: var(--ink); }
 .app-back {
   width: 46px; height: 46px; border: none; background: none; cursor: pointer;
-  font-size: 1.6rem; color: var(--teal-dark); border-radius: 12px; line-height: 1;
+  color: var(--teal-dark); border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
 }
 .app-back:hover { background: var(--teal-light); }
 .appbar-logo { width: 40px; height: 40px; display: block; margin: 0 auto; }

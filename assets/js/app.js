@@ -14,6 +14,9 @@ function qs(name) {
   return new URLSearchParams(location.search).get(name);
 }
 
+/* ئایکۆنی فلتەر (سلایدەرەکان) — ڕەنگەکەی لە دوگمەکەوە وەردەگرێت */
+const FILTER_ICON = `<svg class="filter-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><circle cx="9" cy="9" r="2.6" fill="#fff"/><circle cx="15" cy="15" r="2.6" fill="#fff"/></svg>`;
+
 /* ئەڤاتاری ڕەنگاوڕەنگ بە یەکەم پیتی ناو (بێ پێویستی بە وێنە) */
 function avatar(name, size = 56) {
   const colors = ["#0d9488", "#2563eb", "#7c3aed", "#db2777", "#ea580c", "#0891b2", "#16a34a"];
@@ -110,66 +113,85 @@ function saveChat(doctorId, messages) {
 
 /* ---------- مینۆ و فووتەر و ئاگاداری فریاکەوتن ---------- */
 
-function authArea() {
-  if (NAXOSH.isAdmin()) {
-    return `
-      <a href="admin.html" class="auth-chip auth-admin">🛠️ ${STR.admin.panel}</a>
-      <a href="#" class="auth-logout" onclick="NAXOSH.adminLogout();location.reload();return false">${STR.auth.logout}</a>`;
+/* زانیاری هەر پەڕەیەک: ناونیشانی سەرەوە، دوگمەی گەڕانەوە، و تابی چالاک لە خوارەوە */
+const PAGE_META = {
+  home:         { title: "نەخۆشم", back: false, tab: "home", logo: true },
+  doctors:      { title: "دکتۆر ببینە", back: true, tab: "home" },
+  doctor:       { title: "تۆمارکردنی چاوپێکەوتن", back: true, tab: "home" },
+  specialties:  { title: "خزمەتگوزارییەکان", back: true, tab: "home" },
+  appointments: { title: "چاوپێکەوتنەکانم", back: false, tab: "appts" },
+  meeting:      { title: "چاوپێکەوتنی ڤیدیۆ", back: true, tab: "appts" },
+  chat:         { title: "گفتوگۆ", back: true, tab: "appts" }
+};
+
+/* ناونیشانی تابی هەژمار — بەپێی ئەوەی کێ چووەتە ژوورەوە */
+function accountLabel() {
+  if (NAXOSH.isAdmin()) return "داشبۆرد";
+  if (window.NAXOSH_DB && NAXOSH_DB.active && NAXOSH_DB.isDoctor()) return "داشبۆرد";
+  return "هەژمار";
+}
+
+/* کرتە لەسەر تابی هەژمار: بەڕێوەبەر/پزیشک → داشبۆرد، نەخۆش → دەرچوون، بەتاڵ → چوونەژوورەوە */
+function openAccount() {
+  if (NAXOSH.isAdmin()) { location.href = "admin.html"; return; }
+  if (window.NAXOSH_DB && NAXOSH_DB.active && NAXOSH_DB.isDoctor()) { location.href = "doctor-panel.html"; return; }
+  const u = NAXOSH.getUser();
+  if (u) {
+    if (confirm((u.name || "") + "\n\nدەرچوون لە هەژمار؟")) { NAXOSH.userLogout(); location.reload(); }
+    return;
   }
-  if (window.NAXOSH_DB && NAXOSH_DB.active && NAXOSH_DB.isDoctor()) {
-    return `
-      <a href="doctor-panel.html" class="auth-chip auth-admin">🩺 ${STR.dr.panel}</a>
-      <a href="#" class="auth-logout" onclick="NAXOSH_DB.signOutAdmin().then(()=>location.reload());return false">${STR.auth.logout}</a>`;
-  }
-  const user = NAXOSH.getUser();
-  if (user) {
-    return `
-      <span class="auth-chip">👤 ${user.name}</span>
-      <a href="#" class="auth-logout" onclick="NAXOSH.userLogout();location.reload();return false">${STR.auth.logout}</a>`;
-  }
-  // دوگمەی چوونەژوورەوەی ناوەندی — بۆ نەخۆش و پزیشک و بەڕێوەبەر
-  return `<a href="#" class="auth-chip auth-login" onclick="openAuthModal();return false">🔓 ${STR.auth.login}</a>`;
+  openAuthModal();
+}
+
+function goBack() {
+  if (history.length > 1) history.back();
+  else location.href = "index.html";
 }
 
 function renderChrome(active) {
   const header = document.getElementById("site-header");
-  if (header) {
-    header.innerHTML = `
-      <div class="emergency-bar">⚠️ ${STR.emergency}</div>
-      <nav class="navbar">
-        <a class="brand" href="index.html">
-          <img class="brand-logo" src="assets/img/logo-teal.svg" alt="">
-          <span>نەخۆشم <small>${STR.tagline}</small></span>
-        </a>
-        <button class="nav-toggle" aria-label="مینۆ" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
-        <div class="nav-links">
-          <a href="index.html" class="${active === 'home' ? 'active' : ''}">${STR.nav.home}</a>
-          <a href="specialties.html" class="${active === 'specialties' ? 'active' : ''}">${STR.nav.specialties}</a>
-          <a href="doctors.html" class="${active === 'doctors' ? 'active' : ''}">${STR.nav.doctors}</a>
-          <a href="appointments.html" class="${active === 'appointments' ? 'active' : ''}">${STR.nav.appointments}</a>
-          <a href="doctors.html" class="btn-nav">${STR.nav.book}</a>
-          <span class="auth-area">${authArea()}</span>
-        </div>
-      </nav>`;
+  const footer = document.getElementById("site-footer");
+
+  // پەڕەکانی بەڕێوەبەر/پزیشک باری تایبەتی خۆیان هەیە — بار و تابی نەخۆشیان پێ نادرێت
+  const isPanel = document.getElementById("admin-root") || document.getElementById("dr-root");
+  if (isPanel) {
+    if (header) header.innerHTML = "";
+    if (footer) footer.innerHTML = "";
+    document.body.classList.remove("has-tabbar");
+    return;
   }
 
-  const footer = document.getElementById("site-footer");
+  const meta = PAGE_META[active] || { title: "نەخۆشم", back: false, tab: "home" };
+  document.body.classList.add("has-tabbar");
+
+  const center = meta.logo
+    ? `<img class="appbar-logo" src="assets/img/logo-teal.svg" alt="نەخۆشم">`
+    : `<span class="app-title">${meta.title}</span>`;
+  if (header) {
+    header.innerHTML = `
+      <div class="app-bar">
+        ${meta.back
+          ? `<button class="app-back" aria-label="${STR.common.back}" onclick="goBack()">→</button>`
+          : `<span></span>`}
+        ${center}
+        <span></span>
+      </div>`;
+  }
+
   if (footer) {
+    const tab = id => meta.tab === id ? "tab tab-active" : "tab";
     footer.innerHTML = `
-      <div class="footer-inner">
-        <div>
-          <div class="brand"><img class="brand-logo" src="assets/img/logo-white.svg" alt=""> نەخۆشم</div>
-          <p>${STR.footer.note}</p>
-        </div>
-        <div class="footer-links">
-          <a href="specialties.html">${STR.nav.specialties}</a>
-          <a href="doctors.html">${STR.nav.doctors}</a>
-          <a href="appointments.html">${STR.nav.appointments}</a>
-          <a href="doctor-panel.html">${STR.footer.doctor}</a>
-          <a href="admin.html">${STR.footer.admin}</a>
-        </div>
-      </div>
-      <div class="footer-bottom">${STR.footer.rights}</div>`;
+      <nav class="tabbar">
+        <a href="index.html" class="${tab('home')}">
+          <span class="tab-ico">🏠</span><span>سەرەتا</span>
+        </a>
+        <a href="appointments.html" class="${tab('appts')}">
+          <span class="tab-ico">📅</span><span>چاوپێکەوتنەکانم</span>
+        </a>
+        <a href="#" class="tab" onclick="openAccount();return false">
+          <span class="tab-ico">👤</span><span>${accountLabel()}</span>
+        </a>
+      </nav>`;
   }
 }
 
@@ -271,29 +293,22 @@ function openAuthModal(onSuccess) {
 /* ---------- کارتی پزیشک ---------- */
 
 function doctorCard(d) {
-  // هەڵسەنگاندن و ساڵی ئەزموون — ئەگەر بەتاڵ یان ٠ بن، هیچ پیشان مەدە
-  const ratingHtml = d.rating ? `<p class="doc-rating">${stars(d.rating)} <span class="muted">(${toKurdishDigits(d.reviews)})</span></p>` : "";
-  const expHtml = d.exp ? `<span class="muted">${toKurdishDigits(d.exp)} ${STR.common.experience}</span>` : "";
+  // کارتی سادە و گەورە — هەموو کارتەکە کرتەکراوە بۆ تۆمارکردن (بێ دوگمەی دووانە)
+  const spec = SPECIALTIES.find(s => s.id === d.spec);
   return `
-    <article class="doc-card">
+    <a class="doc-card" href="doctor.html?id=${d.id}">
       <div class="doc-head">
-        ${avatar(d.name, 64)}
-        <div>
+        ${avatar(d.name, 60)}
+        <div class="doc-head-info">
           <h3>${d.name}</h3>
-          <p class="doc-title">${d.title}</p>
-          ${ratingHtml}
+          <p class="doc-title">${spec ? spec.name : d.title}</p>
         </div>
+        <span class="doc-chevron">‹</span>
       </div>
-      <div class="doc-meta">
-        <span class="badge ${availableToday(d) ? 'badge-green' : 'badge-gray'}">${availableToday(d) ? STR.common.availableToday : STR.common.notAvailableToday}</span>
-        ${expHtml}
+      <div class="doc-foot">
+        <span class="doc-price">${formatPrice(d.price)} ${STR.common.currency}</span>
       </div>
-      <div class="doc-price">${formatPrice(d.price)} ${STR.common.currency}</div>
-      <div class="doc-actions">
-        <a class="btn btn-primary" href="doctor.html?id=${d.id}">${STR.common.book}</a>
-        <a class="btn btn-ghost" href="doctor.html?id=${d.id}">${STR.common.viewProfile}</a>
-      </div>
-    </article>`;
+    </a>`;
 }
 
 /* ---------- پەیجی پزیشکەکان (doctors.html) ---------- */
@@ -360,56 +375,49 @@ function initDoctorProfile() {
   const d = DOCTORS.find(x => x.id === Number(qs("id"))) || DOCTORS[0];
   const spec = SPECIALTIES.find(s => s.id === d.spec);
 
-  // هەڵسەنگاندن و ساڵی ئەزموون — ئەگەر بەتاڵ یان ٠ بن، هیچ پیشان مەدە
-  const ratingHtml = d.rating ? `<p class="doc-rating">${stars(d.rating)} <span class="muted">(${toKurdishDigits(d.reviews)} ${STR.common.reviews})</span></p>` : "";
-  const expHtml = d.exp ? `<li><strong>${STR.common.experience}:</strong> ${toKurdishDigits(d.exp)}</li>` : "";
-
+  // پڕۆفایلێکی ساکار: ناو، پسپۆڕی، دۆخی ئەمڕۆ، نرخ — بێ دەقی زیاد
   wrap.innerHTML = `
     <div class="profile-card">
       <div class="profile-head">
-        ${avatar(d.name, 88)}
+        ${avatar(d.name, 64)}
         <div>
           <h1>${d.name}</h1>
-          <p class="doc-title">${d.title}</p>
-          ${ratingHtml}
-          <span class="badge ${availableToday(d) ? 'badge-green' : 'badge-gray'}">${availableToday(d) ? STR.common.availableToday : STR.common.notAvailableToday}</span>
+          <p class="doc-title">${spec ? spec.name : d.title}</p>
         </div>
       </div>
-      <p class="bio">${d.bio}</p>
-      <ul class="profile-facts">
-        ${expHtml}
-        <li><strong>${STR.common.languages}:</strong> ${d.langs.join("، ")}</li>
-        <li><strong>${STR.common.price}:</strong> ${formatPrice(d.price)} ${STR.common.currency} ${STR.common.perVisit}</li>
-      </ul>
-      <div class="treats-box">
-        <strong>${STR.common.treats}</strong>
-        <div class="tags">${spec.treats.map(t => `<span class="tag">${t}</span>`).join("")}</div>
-      </div>
+      <div class="doc-price">${formatPrice(d.price)} ${STR.common.currency}</div>
     </div>
 
     <div class="booking-card" id="booking-card">
-      <h2>تۆمارکردنی چاوپێکەوتن</h2>
-      <p class="book-intro">لێرە ڕۆژ و کاتی چاوپێکەوتنەکەت دیاری بکە: سەرەتا ڕۆژێک، پاشان کاتێک هەڵبژێرە، ئینجا دوگمەی سەوز دابگرە.</p>
-      <label class="book-step"><span class="step-num">١</span> ڕۆژێک هەڵبژێرە</label>
+      <label class="book-label">ڕۆژ</label>
       <div class="days" id="days"></div>
-      <label class="book-step"><span class="step-num">٢</span> کاتێک هەڵبژێرە</label>
+      <label class="book-label">کات</label>
       <div class="slots" id="slots"></div>
-      <label class="book-step"><span class="step-num">٣</span> کورتە باسی نیشانەکانت (ئارەزوومەندانە)</label>
-      <textarea id="symptoms" rows="3" placeholder="بۆ نموونە: لە دوو ڕۆژە سەرئێشە و تام هەیە..."></textarea>
-      <button class="btn btn-primary btn-block" id="confirm-btn">پشتڕاستکردنەوەی تۆمارکردن</button>
+      <a href="#" class="note-toggle" id="note-toggle">＋ تێبینی زیاد بکە</a>
+      <textarea id="symptoms" rows="3" placeholder="نیشانەکانت بنووسە..." hidden></textarea>
+      <button class="btn btn-primary btn-block btn-lg" id="confirm-btn">تۆمارکردنی ڤیدیۆچات</button>
     </div>`;
+
+  // تێبینی شاراوەیە تاکو پەڕە ساکار بێت — کرتە لێبکە بۆ کردنەوەی
+  const noteToggle = document.getElementById("note-toggle");
+  const symBox = document.getElementById("symptoms");
+  noteToggle.addEventListener("click", e => {
+    e.preventDefault(); symBox.hidden = false; noteToggle.style.display = "none"; symBox.focus();
+  });
 
   // ڕۆژەکان (٧ ڕۆژی داهاتوو) — تەنها ئەو ڕۆژانە بەردەستن کە پزیشک کاری تێدا دەکات
   const dayNames = STR.days || ["یەکشەممە", "دووشەممە", "سێشەممە", "چوارشەممە", "پێنجشەممە", "هەینی", "شەممە"];
   const daysBox = document.getElementById("days");
   const today = new Date();
   const avail = docDays(d);
+  // تۆمارکردن لانیکەم ١ ڕۆژ پێشتر دەکرێت — ئەمڕۆ ناکرێت. بۆیە لە سبەینێوە
+  // (i=1) تا ٧ ڕۆژی داهاتوو پیشان دەدرێن.
   let chosenDay = null, chosenSlot = null, firstAvail = null;
-  for (let i = 0; i < 7; i++) {
+  for (let i = 1; i <= 7; i++) {
     const dt = new Date(today.getTime() + i * 86400000);
     const ok = avail.includes(dt.getDay());
     if (ok && firstAvail === null) firstAvail = i;
-    const label = i === 0 ? "ئەمڕۆ" : dayNames[dt.getDay()];
+    const label = dayNames[dt.getDay()];
     daysBox.appendChild(el(`<button class="day ${i === firstAvail ? 'day-active' : ''} ${ok ? '' : 'day-off'}" data-i="${i}" ${ok ? '' : 'disabled'}>
       <span>${label}</span><span class="day-date">${toKurdishDigits(dt.getDate())}ی مانگ</span></button>`));
   }
@@ -477,7 +485,7 @@ function initDoctorProfile() {
       const user = NAXOSH.getUser();
       const dt = new Date(today.getTime() + chosenDay * 86400000);
       const date = isoDate(dt);
-      const dayLabel = chosenDay === 0 ? "ئەمڕۆ" : dayNames[dt.getDay()];
+      const dayLabel = dayNames[dt.getDay()];
       const slotKey = d.id + "_" + date + "_" + chosenSlot;
       const rec = {
         id: newBookingId(),
@@ -521,15 +529,13 @@ function showBookingSuccess(d, booking) {
   card.innerHTML = `
     <div class="success">
       <div class="success-icon">✅</div>
-      <h2>تۆمارکردنەکەت سەرکەوتوو بوو!</h2>
-      <p>چاوپێکەوتنت لەگەڵ <strong>${d.name}</strong></p>
+      <h2>تۆمار کرا</h2>
       <p class="success-when">📅 ${booking.day} — 🕐 ${booking.time}</p>
       ${meet
-        ? `<p class="success-note">🎥 لە کاتی دیاریکراودا ئەم دوگمەیە دابگرە بۆ چوونە ناو ژووری چاوپێکەوتن.
-             هەمیشە لە پەڕەی «چاوپێکەوتنەکانم»یشەوە دەستت دەگات.</p>
-           <a class="btn btn-primary btn-block" href="meeting.html?doctor=${d.id}">🎥 چوونە ناو چاوپێکەوتنی ڤیدیۆ</a>`
-        : `<p class="success-note">📞 پزیشک لە کاتی دیاریکراودا پەیوەندیت پێوە دەکات.</p>`}
-      <a class="btn btn-ghost btn-block" href="appointments.html">بینینی چاوپێکەوتنەکانم</a>
+        ? `<a class="btn btn-primary btn-block btn-lg" href="meeting.html?doctor=${d.id}">🎥 چوونە ناو چاوپێکەوتن</a>
+           <p class="success-note">🕐 لە کاتی دیاریکراودا ئەم دوگمەیە دابگرە بۆ چاوپێکەوتن لەگەڵ دکتۆرەکەتدا. دەتوانیت هەموو چاوپێکەوتنەکانت لە بەشی «چاوپێکەوتنەکانم» بدۆزیتەوە.</p>`
+        : `<p class="success-note">📞 پزیشک پەیوەندیت پێوە دەکات.</p>`}
+      <a class="btn btn-ghost btn-block" href="appointments.html">چاوپێکەوتنەکانم</a>
     </div>`;
 }
 
@@ -763,28 +769,18 @@ function initSpecialties() {
 /* ---------- پەیجی سەرەتا (index.html) ---------- */
 
 function initHome() {
-  // دەقەکانی هیرۆ لە STR.home ـەوە (دەکرێت لە داشبۆردەوە بگۆڕدرێن)
-  const setText = (id, val) => { const n = document.getElementById(id); if (n && val) n.textContent = val; };
-  if (STR.home) {
-    setText("hero-title", STR.home.heroTitle);
-    setText("hero-lead", STR.home.heroLead);
-    setText("hero-cta", STR.home.heroCta);
-    setText("hero-scroll", STR.home.heroScroll);
-  }
-
-  const grid = document.getElementById("home-spec-grid");
-  if (grid) {
-    grid.innerHTML = SPECIALTIES.map(s => `
-      <a class="spec-mini" href="doctors.html?spec=${s.id}">
-        <span class="spec-icon">${s.icon}</span>
-        <span>${s.name}</span>
-        <small>${s.short}</small>
-      </a>`).join("");
-  }
-  const docs = document.getElementById("home-doctors");
-  if (docs) {
-    docs.innerHTML = DOCTORS.slice(0, 4).map(doctorCard).join("");
-  }
+  const root = document.getElementById("home-root");
+  if (!root) return;
+  // پەڕەی سەرەتا = ناونیشان + فلتەری ئایکۆن + لیستی دکتۆرەکان لە خوارەوە
+  root.innerHTML = `
+    <h2 class="home-title">دکتۆرێک لە خوارەوە هەڵبژێرە و ڤیدیۆچات لەگەڵی تۆمار بکە</h2>
+    <div class="filter-wrap">
+      <button class="filter-toggle" id="filter-toggle" aria-expanded="false" aria-label="فلتەرکردن بەپێی پسپۆڕی">${FILTER_ICON}</button>
+      <div class="filter-bar" id="filter-bar" hidden></div>
+    </div>
+    <div class="doc-grid" id="doc-grid"></div>`;
+  // هەمان لۆجیکی فلتەرکردن و لیستکردنی پەڕەی پزیشکەکان بەکاردەهێنینەوە
+  initDoctors();
 }
 
 /* ---------- ڕێکخەری گشتی ---------- */

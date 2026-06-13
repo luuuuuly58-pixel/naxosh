@@ -114,6 +114,9 @@
       el.classList.add("nx-editable");
       el.setAttribute("contenteditable", "true");
       el.setAttribute("spellcheck", "false");
+      // دوگمەکان: Space/Enter بەشێوەی بنەڕەت دوگمەکە کارا دەکەن نەک نووسین —
+      // بۆیە لە دۆخی دەستکاریدا ڕێیان لێدەگرین تاکو بۆشایی بنووسرێت
+      if (el.tagName === "BUTTON") el.addEventListener("keydown", btnKey);
     });
 
     const fab = document.getElementById("nx-fab");
@@ -140,6 +143,16 @@
     if (e.target.closest("#nx-bar")) return;        // دوگمەکانی تووڵامراز ئازادن
     const a = e.target.closest("a,button");
     if (a) { e.preventDefault(); e.stopPropagation(); }
+  }
+
+  // لەسەر دوگمەی دەستکاریکراو: بۆشایی/Enter نەبنە هۆی کارایکردنی دوگمەکە
+  function btnKey(e) {
+    if (e.key === " " || e.code === "Space") {
+      e.preventDefault();
+      document.execCommand("insertText", false, " ");
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+    }
   }
 
   /* ---------- پاشەکەوتکردن — هەر خانە بە کلیلی خۆی ---------- */
@@ -176,6 +189,7 @@
       el.classList.remove("nx-editable");
       el.removeAttribute("contenteditable");
       el.removeAttribute("spellcheck");
+      if (el.tagName === "BUTTON") el.removeEventListener("keydown", btnKey);
     });
     const bar = document.getElementById("nx-bar");
     if (bar) bar.remove();

@@ -76,8 +76,10 @@ img { max-width: 100%; }
   border-radius: 12px;
   font-weight: 900;
 }
-.brand-logo { width: 32px; height: 32px; display: block; }
-.hero-logo-img { width: 82px; height: 82px; display: block; }
+.brand-logo { width: 40px; height: 40px; display: block; }
+.hero-logo-img { width: 96px; height: 96px; display: block; }
+/* لۆگۆ بەتەنها — بێ سندوقی پڕ */
+.hero-logo--bare { background: none; border: none; width: auto; height: auto; border-radius: 0; }
 .nav-links { display: flex; align-items: center; gap: 6px; }
 .nav-links a {
   padding: 8px 14px;

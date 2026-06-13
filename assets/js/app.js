@@ -138,7 +138,7 @@ function renderChrome(active) {
       <div class="emergency-bar">⚠️ ${STR.emergency}</div>
       <nav class="navbar">
         <a class="brand" href="index.html">
-          <span class="brand-mark"><img class="brand-logo" src="assets/img/logo-white.svg" alt=""></span>
+          <img class="brand-logo" src="assets/img/logo-teal.svg" alt="">
           <span>نەخۆشم <small>${STR.tagline}</small></span>
         </a>
         <button class="nav-toggle" aria-label="مینۆ" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
@@ -158,7 +158,7 @@ function renderChrome(active) {
     footer.innerHTML = `
       <div class="footer-inner">
         <div>
-          <div class="brand"><span class="brand-mark"><img class="brand-logo" src="assets/img/logo-white.svg" alt=""></span> نەخۆشم</div>
+          <div class="brand"><img class="brand-logo" src="assets/img/logo-white.svg" alt=""> نەخۆشم</div>
           <p>${STR.footer.note}</p>
         </div>
         <div class="footer-links">

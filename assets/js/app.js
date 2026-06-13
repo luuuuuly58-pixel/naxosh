@@ -501,8 +501,9 @@ function initDoctorProfile() {
   const avail = docDays(d);
   // تۆمارکردن لانیکەم ١ ڕۆژ پێشتر دەکرێت — ئەمڕۆ ناکرێت. بۆیە لە سبەینێوە
   // (i=1) تا ٧ ڕۆژی داهاتوو پیشان دەدرێن.
+  // ⚠️ TEMP-TEST: i=0 ئەمڕۆش ڕێگەپێدراوە بۆ تاقیکردنەوەی دوگمەی ڤیدیۆ — دواتر بگەڕێنەرەوە بۆ i=1.
   let chosenDay = null, chosenSlot = null, firstAvail = null;
-  for (let i = 1; i <= 7; i++) {
+  for (let i = 0; i <= 7; i++) {
     const dt = new Date(today.getTime() + i * 86400000);
     const ok = avail.includes(dt.getDay());
     if (ok && firstAvail === null) firstAvail = i;

@@ -17,6 +17,13 @@ function qs(name) {
 /* ئایکۆنی فلتەر (سلایدەرەکان) — ڕەنگەکەی لە دوگمەکەوە وەردەگرێت */
 const FILTER_ICON = `<svg class="filter-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><circle cx="9" cy="9" r="2.6" fill="#fff"/><circle cx="15" cy="15" r="2.6" fill="#fff"/></svg>`;
 
+/* تۆمارکردنی سێرڤیس وۆرکەر — تاکو ماڵپەڕ ببێتە ئەپێکی دامەزراندنی (PWA) */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+
 /* ئەڤاتاری ڕەنگاوڕەنگ بە یەکەم پیتی ناو (بێ پێویستی بە وێنە) */
 function avatar(name, size = 56) {
   const colors = ["#0d9488", "#2563eb", "#7c3aed", "#db2777", "#ea580c", "#0891b2", "#16a34a"];

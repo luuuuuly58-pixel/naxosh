@@ -108,7 +108,7 @@
       // ئەگەرنا دەستکارییە کۆنەکانی پزیشک خۆی دەستکاریی بەڕێوەبەر دادەپۆشێت
       if (window.NAXOSH_DB && NAXOSH_DB.active) {
         content.doctors.forEach(d =>
-          NAXOSH_DB.saveDoctorSettings(d.id, { days: d.days || [], slots: d.slots || [], meet: d.meet || "" })
+          NAXOSH_DB.saveDoctorSettings(d.id, { days: d.days || [], slots: d.slots || [], daySlots: d.daySlots || {}, meet: d.meet || "" })
             .catch(e => console.warn("[naxosh] doctorSettings sync:", e)));
       }
       content = NAXOSH.snapshot(); flash(STR.admin.saved);
@@ -204,7 +204,9 @@
     document.getElementById("add-doc").addEventListener("click", () => {
       const id = content.doctors.reduce((m, d) => Math.max(m, d.id), 0) + 1;
       const defSlots = (content.timeSlots && content.timeSlots.length) ? content.timeSlots.slice() : ["١٩:٠٠", "٢٠:٣٠"];
-      content.doctors.push({ id, name: "", spec: content.specialties[0] ? content.specialties[0].id : "", title: "", rating: 5, reviews: 0, price: 15000, exp: 1, langs: ["کوردی"], days: [0, 1, 2, 3, 4, 6], slots: defSlots, bio: "" });
+      const defDays = [0, 1, 2, 3, 4, 6];
+      const defDaySlots = {}; defDays.forEach(di => defDaySlots[di] = defSlots.slice());
+      content.doctors.push({ id, name: "", spec: content.specialties[0] ? content.specialties[0].id : "", title: "", rating: 5, reviews: 0, price: 15000, exp: 1, langs: ["کوردی"], days: defDays, slots: defSlots, daySlots: defDaySlots, bio: "" });
       renderTab();
     });
 
@@ -220,6 +222,17 @@
         else if (!e.target.checked && k >= 0) arr.splice(k, 1);
         arr.sort((a, b) => a - b);
         content.doctors[idx].days = arr;
+        const row = e.target.closest(".dr-dayslot");
+        if (row) row.classList.toggle("is-off", !e.target.checked);
+        return;
+      }
+      if (f === "dayslot") {
+        const day = +e.target.dataset.day;
+        const times = e.target.value.split(/[\n,،]/).map(s => s.trim()).filter(Boolean);
+        const ds = (content.doctors[idx].daySlots && typeof content.doctors[idx].daySlots === "object")
+          ? content.doctors[idx].daySlots : {};
+        if (times.length) ds[day] = times; else delete ds[day];
+        content.doctors[idx].daySlots = ds;
         return;
       }
       let v = e.target.value;
@@ -280,14 +293,20 @@
           <label class="adm-field">ژمارەی پێداچوونەوە<input type="number" data-f="reviews" value="${d.reviews}"></label>
           <label class="adm-field">زمانەکان (بە ، جیابکەرەوە)<input data-f="langs" value="${esc((d.langs || []).join("، "))}"></label>
           <div class="adm-field adm-full">
-            <span>ڕۆژەکانی بەردەستبوون</span>
-            <div class="adm-days">
-              ${(STR.days || []).map((dn, di) => `<label class="adm-day"><input type="checkbox" data-f="day" data-day="${di}" ${(d.days || []).includes(di) ? "checked" : ""}> ${dn}</label>`).join("")}
+            <span>ڕۆژ و کاتەکانی بەردەستبوون — بۆ هەر ڕۆژێک کاتی جیاواز بنووسە (بە فاریزە «،» جیایان بکەرەوە)</span>
+            <div class="dr-dayslots">
+              ${(STR.days || []).map((dn, di) => {
+                const on = (d.days || []).includes(di);
+                const ds = d.daySlots && (d.daySlots[di] != null ? d.daySlots[di] : d.daySlots[String(di)]);
+                const fb = (Array.isArray(d.slots) && d.slots.length) ? d.slots : (content.timeSlots || []);
+                const times = (Array.isArray(ds) && ds.length) ? ds : fb;
+                return `<div class="dr-dayslot ${on ? "" : "is-off"}" data-day="${di}">
+                  <label class="adm-day"><input type="checkbox" data-f="day" data-day="${di}" ${on ? "checked" : ""}> ${dn}</label>
+                  <input data-f="dayslot" data-day="${di}" dir="ltr" placeholder="١٩:٠٠، ٢٠:٣٠" value="${esc(times.join("، "))}">
+                </div>`;
+              }).join("")}
             </div>
           </div>
-          <label class="adm-field adm-full">کاتە بەردەستەکانی ئەم پزیشکە (هەر دێڕێک یەک کات — بۆ نموونە: ١٩:٠٠)
-            <textarea data-f="slots" rows="3">${esc((Array.isArray(d.slots) && d.slots.length ? d.slots : (content.timeSlots || [])).join("\n"))}</textarea>
-          </label>
           <label class="adm-field adm-full">🎥 بەستەری ژووری چاوپێکەوتن (Google Meet / Whereby — تەنها لێرەوە دادەنرێت)
             <input data-f="meet" value="${esc(d.meet || "")}" dir="ltr" placeholder="https://meet.google.com/abc-defg-hij">
           </label>

@@ -40,8 +40,15 @@ function docDays(d) {
 function availableToday(d) {
   return docDays(d).includes(new Date().getDay());
 }
-/* کاتە بەردەستەکانی پزیشک — هەر پزیشکە و کاتی تایبەتی خۆی */
-function docSlots(d) {
+/* کاتە بەردەستەکانی پزیشک — هەر پزیشکە و کاتی تایبەتی خۆی.
+   ئەگەر weekday (٠=یەکشەممە ... ٦=شەممە) بدرێت و پزیشک کاتی تایبەتی ئەو
+   ڕۆژەی دانابێت (daySlots)، ئەوە دەگەڕێنرێتەوە — بۆیە دەکرێت هەر ڕۆژێک کاتی
+   جیاوازی هەبێت. ئەگەرنا دەکەوێتەوە سەر کاتە گشتییەکان (slots). */
+function docSlots(d, weekday) {
+  if (d && d.daySlots && weekday != null) {
+    const ds = d.daySlots[weekday] != null ? d.daySlots[weekday] : d.daySlots[String(weekday)];
+    if (Array.isArray(ds) && ds.length) return ds;
+  }
   if (Array.isArray(d.slots) && d.slots.length) return d.slots;
   return (typeof TIME_SLOTS !== "undefined") ? TIME_SLOTS : [];
 }
@@ -264,6 +271,9 @@ function openAuthModal(onSuccess) {
 /* ---------- کارتی پزیشک ---------- */
 
 function doctorCard(d) {
+  // هەڵسەنگاندن و ساڵی ئەزموون — ئەگەر بەتاڵ یان ٠ بن، هیچ پیشان مەدە
+  const ratingHtml = d.rating ? `<p class="doc-rating">${stars(d.rating)} <span class="muted">(${toKurdishDigits(d.reviews)})</span></p>` : "";
+  const expHtml = d.exp ? `<span class="muted">${toKurdishDigits(d.exp)} ${STR.common.experience}</span>` : "";
   return `
     <article class="doc-card">
       <div class="doc-head">
@@ -271,12 +281,12 @@ function doctorCard(d) {
         <div>
           <h3>${d.name}</h3>
           <p class="doc-title">${d.title}</p>
-          <p class="doc-rating">${stars(d.rating)} <span class="muted">(${toKurdishDigits(d.reviews)})</span></p>
+          ${ratingHtml}
         </div>
       </div>
       <div class="doc-meta">
         <span class="badge ${availableToday(d) ? 'badge-green' : 'badge-gray'}">${availableToday(d) ? STR.common.availableToday : STR.common.notAvailableToday}</span>
-        <span class="muted">${toKurdishDigits(d.exp)} ${STR.common.experience}</span>
+        ${expHtml}
       </div>
       <div class="doc-price">${formatPrice(d.price)} ${STR.common.currency}</div>
       <div class="doc-actions">
@@ -350,6 +360,10 @@ function initDoctorProfile() {
   const d = DOCTORS.find(x => x.id === Number(qs("id"))) || DOCTORS[0];
   const spec = SPECIALTIES.find(s => s.id === d.spec);
 
+  // هەڵسەنگاندن و ساڵی ئەزموون — ئەگەر بەتاڵ یان ٠ بن، هیچ پیشان مەدە
+  const ratingHtml = d.rating ? `<p class="doc-rating">${stars(d.rating)} <span class="muted">(${toKurdishDigits(d.reviews)} ${STR.common.reviews})</span></p>` : "";
+  const expHtml = d.exp ? `<li><strong>${STR.common.experience}:</strong> ${toKurdishDigits(d.exp)}</li>` : "";
+
   wrap.innerHTML = `
     <div class="profile-card">
       <div class="profile-head">
@@ -357,13 +371,13 @@ function initDoctorProfile() {
         <div>
           <h1>${d.name}</h1>
           <p class="doc-title">${d.title}</p>
-          <p class="doc-rating">${stars(d.rating)} <span class="muted">(${toKurdishDigits(d.reviews)} ${STR.common.reviews})</span></p>
+          ${ratingHtml}
           <span class="badge ${availableToday(d) ? 'badge-green' : 'badge-gray'}">${availableToday(d) ? STR.common.availableToday : STR.common.notAvailableToday}</span>
         </div>
       </div>
       <p class="bio">${d.bio}</p>
       <ul class="profile-facts">
-        <li><strong>${STR.common.experience}:</strong> ${toKurdishDigits(d.exp)}</li>
+        ${expHtml}
         <li><strong>${STR.common.languages}:</strong> ${d.langs.join("، ")}</li>
         <li><strong>${STR.common.price}:</strong> ${formatPrice(d.price)} ${STR.common.currency} ${STR.common.perVisit}</li>
       </ul>
@@ -411,9 +425,11 @@ function initDoctorProfile() {
   function dateForOffset(i) { return isoDate(new Date(today.getTime() + i * 86400000)); }
 
   function renderSlots() {
-    const slots = docSlots(d);
+    // ڕۆژی هەفتەی ئەو ڕۆژەی هەڵبژێردراوە — تاکو کاتە تایبەتەکانی ئەو ڕۆژە بهێنرێن
+    const weekday = chosenDay === null ? null : new Date(today.getTime() + chosenDay * 86400000).getDay();
+    const slots = docSlots(d, weekday);
     if (!slots.length) {
-      slotsBox.innerHTML = `<p class="muted">هیچ کاتێک دانەنراوە بۆ ئەم پزیشکە.</p>`;
+      slotsBox.innerHTML = `<p class="muted">هیچ کاتێک دانەنراوە بۆ ئەم ڕۆژە.</p>`;
       return;
     }
     const date = chosenDay === null ? null : dateForOffset(chosenDay);

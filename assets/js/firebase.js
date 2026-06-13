@@ -28,11 +28,19 @@ window.NAXOSH_DB = (function () {
     return OFF;
   }
 
-  const LS = { content: "naxosh_content", adminPw: "naxosh_admin_pw", bookings: "naxosh_bookings" };
+  const LS = { content: "naxosh_content", adminPw: "naxosh_admin_pw", bookings: "naxosh_bookings",
+               role: "naxosh_role", doctorId: "naxosh_doctor_id" };
 
   let curUid = null;
-  let curRole = null;             // "patient" | "doctor" | "admin"
-  let curDoctorId = null;         // ناسنامەی پزیشک ئەگەر ڕۆڵەکە پزیشک بێت
+  // ڕۆڵی پێشوو لە localStorage ـەوە بیربهێنەرەوە — تاکو لە کاتی بارکردنی پەڕەیەکی
+  // نوێدا مینۆ یەکسەر بە ڕۆڵی دروست (بەڕێوەبەر/پزیشک) پیشان بدرێت، نەک «تەزووی»
+  // چوونەدەرەوە پێش ئەوەی ناسنامەی Firebase بگەڕێتەوە (هەمان وێبگەڕ، هەمان هەژمار).
+  // ئەگەر هەژمارەکە لەناکاو دەرچووبێت، onAuthStateChanged دواتر ڕاستی دەکاتەوە.
+  let curRole = (function () { try { return localStorage.getItem(LS.role) || null; } catch (_) { return null; } })();
+  let curDoctorId = (function () {
+    try { const v = localStorage.getItem(LS.doctorId); return (v == null || v === "") ? null : (isNaN(v) ? v : Number(v)); }
+    catch (_) { return null; }
+  })();
   let contentAttached = false;     // گوێگری دەقی ماڵپەڕ — هەڵە؟ دووبارە هەوڵ دەدرێتەوە
   let docSettingsAttached = false; // گوێگری خشتەی پزیشکان — هەڵە؟ دووبارە هەوڵ دەدرێتەوە
   let staticAttached = false;      // گوێگری ڕێکخستن (adminPw) — دوای ناسنامە، تەنها جارێک
@@ -113,6 +121,12 @@ window.NAXOSH_DB = (function () {
 
   /* ---------- گۆڕانی دۆخی ناسنامە ---------- */
   function finishAuth() {
+    // ڕۆڵی ئێستا پاشەکەوت بکە بۆ بارکردنی داهاتوو (تەزووی مینۆ لادەبات)
+    try {
+      if (curRole) localStorage.setItem(LS.role, curRole); else localStorage.removeItem(LS.role);
+      if (curDoctorId != null) localStorage.setItem(LS.doctorId, String(curDoctorId)); else localStorage.removeItem(LS.doctorId);
+    } catch (_) {}
+
     attachSettings();
     attachBookings();
     attachPublic();   // دووبارە هەوڵ بدە — ئەگەر پێش ناسنامە سەرکەوتوو نەبوو (یاسای کۆن)

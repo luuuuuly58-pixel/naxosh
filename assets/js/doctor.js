@@ -151,30 +151,61 @@
       box.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h3>${STR.dr.notDoctor}</h3></div>`;
       return;
     }
+    // کاتە یەدەگەکان (بۆ ڕۆژێک کە کاتی تایبەتی نەبێت) + کاتی ئێستای هەر ڕۆژێک
+    const fallback = (Array.isArray(me.slots) && me.slots.length) ? me.slots
+      : (typeof TIME_SLOTS !== "undefined" ? TIME_SLOTS : []);
+    const dayMap = (me.daySlots && typeof me.daySlots === "object") ? me.daySlots : {};
+    const timesFor = di => {
+      const ds = dayMap[di] != null ? dayMap[di] : dayMap[String(di)];
+      return (Array.isArray(ds) && ds.length) ? ds : fallback;
+    };
+
     box.innerHTML = `
       <div class="adm-section">
         <h3>${STR.dr.tabs.schedule}</h3>
         <p class="muted">${STR.dr.schedHint}</p>
+        <p class="muted">بۆ هەر ڕۆژێک دەتوانیت کاتی جیاواز دابنێیت. کاتەکان بە فاریزە (،) جیا بکەرەوە — بۆ نموونە: ١٩:٠٠، ٢٠:٣٠</p>
         <div class="adm-field adm-full">
           <span>${STR.dr.daysLabel}</span>
-          <div class="adm-days">
-            ${(STR.days || []).map((dn, di) => `<label class="adm-day"><input type="checkbox" data-day="${di}" ${(me.days || []).includes(di) ? "checked" : ""}> ${dn}</label>`).join("")}
+          <div class="dr-dayslots">
+            ${(STR.days || []).map((dn, di) => {
+              const on = (me.days || []).includes(di);
+              return `<div class="dr-dayslot ${on ? "" : "is-off"}" data-day="${di}">
+                <label class="adm-day"><input type="checkbox" data-day="${di}" ${on ? "checked" : ""}> ${dn}</label>
+                <input class="dr-day-times" data-times="${di}" dir="ltr" placeholder="١٩:٠٠، ٢٠:٣٠" value="${esc(timesFor(di).join("، "))}">
+              </div>`;
+            }).join("")}
           </div>
         </div>
-        <label class="adm-field adm-full">${STR.dr.slotsLabel}
-          <textarea id="dr-slots" rows="4">${esc(docSlots(me).join("\n"))}</textarea>
-        </label>
         <button class="btn btn-primary" id="dr-save-sched">${STR.dr.saveSched}</button>
       </div>`;
+
+    // نیشانەی ڕۆژ ⟷ ڕووخساری خانەی کاتەکان (کاڵبوونەوە کاتێک ڕۆژەکە ناچالاکە)
+    box.addEventListener("change", e => {
+      const c = e.target.closest("input[type=checkbox][data-day]"); if (!c) return;
+      const row = c.closest(".dr-dayslot");
+      if (row) row.classList.toggle("is-off", !c.checked);
+    });
+
     box.querySelector("#dr-save-sched").addEventListener("click", () => {
-      const days = [...box.querySelectorAll("[data-day]")]
-        .filter(c => c.checked).map(c => +c.dataset.day).sort((a, b) => a - b);
-      const slots = box.querySelector("#dr-slots").value.split("\n").map(s => s.trim()).filter(Boolean);
-      if (!slots.length) { alert("تکایە لانیکەم یەک کات بنووسە."); return; }
+      const days = [], daySlots = {};
+      let bad = null;
+      [...box.querySelectorAll(".dr-dayslot")].forEach(row => {
+        const di = +row.dataset.day;
+        if (!row.querySelector("input[type=checkbox]").checked) return;
+        const times = row.querySelector(".dr-day-times").value
+          .split(/[\n,،]/).map(s => s.trim()).filter(Boolean);
+        if (!times.length) { if (bad === null) bad = (STR.days || [])[di]; return; }
+        days.push(di); daySlots[di] = times;
+      });
+      days.sort((a, b) => a - b);
+      if (bad !== null) { alert(`تکایە بۆ ڕۆژی «${bad}» لانیکەم یەک کات بنووسە، یان نیشانەکەی لابە.`); return; }
+      if (!days.length) { alert("تکایە لانیکەم یەک ڕۆژ هەڵبژێرە و کاتەکانی بنووسە."); return; }
+      const slots = daySlots[days[0]];   // یەدەگی گشتی = کاتەکانی یەکەم ڕۆژ
       // یەکسەر لە ناوخۆدا جێبەجێی بکە، پاشان بۆ هەور بینێرە
       // (بەستەری ژوور لێرە نانێردرێت — تەنها بەڕێوەبەر دایدەنێت)
-      me.days = days; me.slots = slots;
-      Promise.resolve(NAXOSH_DB.saveDoctorSettings(me.id, { days, slots }))
+      me.days = days; me.daySlots = daySlots; me.slots = slots;
+      Promise.resolve(NAXOSH_DB.saveDoctorSettings(me.id, { days, daySlots, slots }))
         .then(() => flash(STR.dr.schedSaved))
         .catch(err => alert("نەتوانرا پاشەکەوت بکرێت — هەوڵ بدەرەوە.\n(" + (err.code || err.message || err) + ")"));
     });

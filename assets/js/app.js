@@ -492,7 +492,7 @@ function initDoctorProfile() {
         doctorId: d.id, doctorName: d.name, doctorTitle: d.title,
         spec: d.spec, price: d.price,
         date, slotKey,
-        day: `${dayLabel} ${toKurdishDigits(dt.getDate())}`,
+        day: `${dayLabel} ${toKurdishDigits(dt.getDate())}ی مانگ`,
         time: chosenSlot,
         symptoms: document.getElementById("symptoms").value.trim(),
         userName: user ? user.name : "",
@@ -535,7 +535,6 @@ function showBookingSuccess(d, booking) {
         ? `<a class="btn btn-primary btn-block btn-lg" href="meeting.html?doctor=${d.id}">🎥 چوونە ناو چاوپێکەوتن</a>
            <p class="success-note">🕐 لە کاتی دیاریکراودا ئەم دوگمەیە دابگرە بۆ چاوپێکەوتن لەگەڵ دکتۆرەکەتدا. دەتوانیت هەموو چاوپێکەوتنەکانت لە بەشی «چاوپێکەوتنەکانم» بدۆزیتەوە.</p>`
         : `<p class="success-note">📞 پزیشک پەیوەندیت پێوە دەکات.</p>`}
-      <a class="btn btn-ghost btn-block" href="appointments.html">چاوپێکەوتنەکانم</a>
     </div>`;
 }
 

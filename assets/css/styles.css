@@ -76,6 +76,8 @@ img { max-width: 100%; }
   border-radius: 12px;
   font-weight: 900;
 }
+.brand-logo { width: 32px; height: 32px; display: block; }
+.hero-logo-img { width: 82px; height: 82px; display: block; }
 .nav-links { display: flex; align-items: center; gap: 6px; }
 .nav-links a {
   padding: 8px 14px;

@@ -78,6 +78,85 @@ function isoDate(dt) {
   return dt.getFullYear() + "-" + p(dt.getMonth() + 1) + "-" + p(dt.getDate());
 }
 
+/* ============================================================
+   پەنجەرەی کاتی چاوپێکەوتن
+   ------------------------------------------------------------
+   • دوگمەی چوونەژوورەوە ٥ خولەک پێش کاتی دیاریکراو دەردەکەوێت.
+   • ١٥ خولەک دوای دەستپێک دوگمەکە نامێنێت (کەس ناتوانێت بچێتە ژوورەوە).
+   • ٢٠ خولەک دوای دەستپێک ژوورەکە بە زۆر دادەخرێت — هیچ چاوپێکەوتنێک
+     لەوە درێژتر نابێت.
+   ئەمە پاراستنی ڕاستەقینە نییە (کۆدی لای بەکارهێنەرە) بەڵکو ڕێگری لە
+   تێکەڵبوون دەکات: کەس ناتوانێت بچێتە ناو چاوپێکەوتنی کاتێکی تردا.
+   ============================================================ */
+const MEET_OPEN_BEFORE_MS = 5 * 60000;   // ٥ خولەک پێش کاتەکە
+const MEET_BTN_AFTER_MS   = 15 * 60000;  // دوگمە تا ١٥ خولەک دوای دەستپێک
+const MEET_HARD_AFTER_MS  = 20 * 60000;  // ژوور تا ٢٠ خولەک دوای دەستپێک
+
+/* ژمارە کوردی/عەرەبی/فارسییەکان بگەڕێنەرەوە بۆ ئینگلیزی */
+function fromKurdishDigits(s) {
+  return String(s)
+    .replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d))
+    .replace(/[۰-۹]/g, d => "۰۱۲۳۴۵۶۷۸۹".indexOf(d));
+}
+
+/* کاتی دەستپێکی تۆمارێک وەک Date — لە b.date (2026-06-14) و b.time (١٩:٠٠) */
+function bookingStart(b) {
+  if (!b || !b.date) return null;
+  const m = fromKurdishDigits(b.time || "").match(/(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const parts = String(b.date).split("-").map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  return new Date(parts[0], parts[1] - 1, parts[2], Number(m[1]), Number(m[2]), 0, 0);
+}
+
+/* دۆخی پەنجەرەی چاوپێکەوتن بۆ تۆمارێک لە کاتی ئێستادا:
+   "before" پێش کاتەکە | "open" دوگمە بەردەستە | "live" ژوور کراوەیە بەڵام
+   دوگمە نەماوە (١٥–٢٠ خولەک) | "ended" تەواوبووە | "unknown" کات نەزانراوە */
+function meetWindow(b, now) {
+  const start = bookingStart(b);
+  if (!start) return { state: "unknown", start: null };
+  const t = (now || new Date()).getTime();
+  const s = start.getTime();
+  const openAt = s - MEET_OPEN_BEFORE_MS;
+  const btnUntil = s + MEET_BTN_AFTER_MS;
+  const hardAt = s + MEET_HARD_AFTER_MS;
+  let state;
+  if (t < openAt) state = "before";
+  else if (t < btnUntil) state = "open";
+  else if (t < hardAt) state = "live";
+  else state = "ended";
+  return { state, start, openAt, btnUntil, hardAt };
+}
+
+/* کاتەکە بە کوردی-دیجیتی HH:MM */
+function clockLabel(dt) {
+  const p = n => String(n).padStart(2, "0");
+  return toKurdishDigits(p(dt.getHours()) + ":" + p(dt.getMinutes()));
+}
+
+/* تۆماری چالاکی ئەم بەکارهێنەرە بۆ ئەم پزیشکە لە کاتی ئێستادا.
+   دەگەڕێتەوە: {booking, window} ئەگەر دوگمە/ژوور کراوە بێت، یان
+   {booking, window, onlyUpcoming:true} ئەگەر تەنها تۆمارێکی داهاتوو هەبێت،
+   یان null ئەگەر هیچ تۆمارێکی پەیوەندیدار نەبێت. */
+function activeBookingFor(doctorId, now) {
+  const me = (typeof NAXOSH !== "undefined" && NAXOSH.getUser) ? NAXOSH.getUser() : null;
+  const mine = getBookings().filter(b =>
+    Number(b.doctorId) === Number(doctorId) &&
+    // ناسنامە: ئەگەر بەکارهێنەر چووبێتە ژوورەوە، تەنها تۆمارەکانی خۆی؛
+    // تۆمارە کۆنەکان بەبێ phoneKey بۆ هەمووان دەردەکەون (وەک پێشتر).
+    (!me || !me.phoneKey || !b.phoneKey || b.phoneKey === me.phoneKey));
+
+  let upcoming = null;
+  for (const b of mine) {
+    const w = meetWindow(b, now);
+    if (w.state === "open" || w.state === "live") return { booking: b, window: w };
+    if (w.state === "before" && (!upcoming || w.start < upcoming.window.start)) {
+      upcoming = { booking: b, window: w };
+    }
+  }
+  return upcoming ? { booking: upcoming.booking, window: upcoming.window, onlyUpcoming: true } : null;
+}
+
 /* دۆخی تۆمارکردن (تەنها بۆ داتا — پشتڕاستکردنەوە نەماوە، دوگمەی ژوور یەکسەر دەردەکەوێت) */
 const STATUS_PENDING = "چاوەڕوان";
 
@@ -542,8 +621,8 @@ function showBookingSuccess(d, booking) {
       <h2>تۆمار کرا</h2>
       <p class="success-when">📅 ${booking.day} — 🕐 ${booking.time}</p>
       ${meet
-        ? `<a class="btn btn-primary btn-block btn-lg" href="meeting.html?doctor=${d.id}">🎥 چوونە ناو چاوپێکەوتن</a>
-           <p class="success-note">🕐 لە کاتی دیاریکراودا ئەم دوگمەیە دابگرە بۆ چاوپێکەوتن لەگەڵ دکتۆرەکەتدا. دەتوانیت هەموو چاوپێکەوتنەکانت لە بەشی «چاوپێکەوتنەکانم» بدۆزیتەوە.</p>`
+        ? `<p class="success-note">🕐 لە کاتی دیاریکراودا، دوگمەی «چوونە ناو چاوپێکەوتن» لە بەشی «چاوپێکەوتنەکانم» دەردەکەوێت — دەتوانیت ٥ خولەک پێش کاتەکە بچیتە ژوورەوە. ژوورەکە ٢٠ خولەک دوای دەستپێک دادەخرێت.</p>
+           <a class="btn btn-primary btn-block btn-lg" href="appointments.html">📅 چاوپێکەوتنەکانم</a>`
         : `<p class="success-note">📞 پزیشک پەیوەندیت پێوە دەکات.</p>`}
     </div>`;
 }
@@ -553,15 +632,20 @@ function showBookingSuccess(d, booking) {
    ماڵپەڕەکەدا دەکرێتەوە. بۆ خزمەتگوزارییەکانی تر (Whereby/Meet کە ڕێگە
    بە دانان لەناو ماڵپەڕ نادەن) دوگمەیەک دەردەکەوێت بۆ کردنەوەی ژوورەکە. */
 
+/* تایمەرەکانی پەنجەرەی کات — لە ئاستی مۆدیوڵدا تاکو نوێکردنەوەی پەڕە
+   (بۆ نموونە لە ڕووداوی naxosh:content) تایمەرەکان کۆ نەکاتەوە. */
+let _meetHardTimer = null, _meetOpenTimer = null;
+function clearMeetTimers() {
+  if (_meetHardTimer) { clearTimeout(_meetHardTimer); _meetHardTimer = null; }
+  if (_meetOpenTimer) { clearTimeout(_meetOpenTimer); _meetOpenTimer = null; }
+}
+
 function initMeeting() {
   const wrap = document.getElementById("meeting-root");
   if (!wrap) return;
   const d = DOCTORS.find(x => x.id === Number(qs("doctor"))) || DOCTORS[0];
   const meet = docMeet(d.id);
-
-  // ئەگەر هەمان ژوور پێشتر کراوەتەوە، دووبارە بارینەکەرەوە (پەیوەندی نەپچڕێت)
-  if (wrap.dataset.meet === meet) return;
-  wrap.dataset.meet = meet;
+  clearMeetTimers();
 
   const head = `
     <div class="meet-head">
@@ -570,16 +654,55 @@ function initMeeting() {
       <span class="meet-note">🕐 تکایە ڕێک لە کاتی دیاریکراودا بەشداربە</span>
     </div>`;
 
-  if (!meet) {
+  const notice = (icon, title, body) => {
+    wrap.dataset.meet = "";   // ڕێگە بدە دواتر دووبارە دروست بکرێتەوە
     wrap.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">📞</div>
-        <h3>ژووری چاوپێکەوتن هێشتا دانەنراوە</h3>
-        <p>پزیشک لە کاتی دیاریکراودا پەیوەندیت پێوە دەکات.</p>
+        <div class="empty-icon">${icon}</div>
+        <h3>${title}</h3>
+        <p>${body}</p>
         <a class="btn btn-ghost" href="appointments.html">گەڕانەوە بۆ چاوپێکەوتنەکانم</a>
       </div>`;
+  };
+
+  if (!meet) {
+    notice("📞", "ژووری چاوپێکەوتن هێشتا دانەنراوە",
+      "پزیشک لە کاتی دیاریکراودا پەیوەندیت پێوە دەکات.");
     return;
   }
+
+  // پشکنینی ناسنامە + کات: تەنها بەکارهێنەرێک کە تۆمارێکی چالاکی هەیە
+  // لەگەڵ ئەم پزیشکەدا و لە پەنجەرەی کاتیدایە دەتوانێت بچێتە ژوورەوە.
+  const active = activeBookingFor(d.id);
+
+  if (!active) {
+    notice("🔒", "ئەم چاوپێکەوتنە بۆ تۆ نییە",
+      "هیچ چاوپێکەوتنێکی چالاکت لەگەڵ ئەم پزیشکەدا نییە لە کاتی ئێستادا. تکایە لە کاتی تۆمارکراودا بگەڕێوە، یان چاوپێکەوتنێک تۆمار بکە.");
+    return;
+  }
+
+  // تۆمارەکە هەیە بەڵام هێشتا کاتی نەهاتووە — تا کاتەکە چاوەڕێ بکە و
+  // پاشان خۆکارانە ژوورەکە بکەرەوە (بەبێ نوێکردنەوەی دەستی).
+  if (active.onlyUpcoming) {
+    const w = active.window;
+    notice("🕐", `چاوپێکەوتنەکەت لە کاتی ${clockLabel(w.start)} دەستپێدەکات`,
+      `دەتوانیت ٥ خولەک پێش کاتەکە بچیتە ژوورەوە. ئەم پەڕەیە خۆی دەکرێتەوە کاتێک کاتەکە دێت.`);
+    const ms = w.openAt - Date.now();
+    _meetOpenTimer = setTimeout(initMeeting, Math.max(1000, ms + 500));
+    return;
+  }
+
+  // چالاک (open یان live) — ژوورەکە پیشان بدە و تایمەری داخستن دابنێ
+  showMeetRoom(wrap, head, meet);
+  const ms = active.window.hardAt - Date.now();
+  _meetHardTimer = setTimeout(() => endMeetingInPlace(wrap), Math.max(1000, ms));
+}
+
+/* ژوورەکە پیشان بدە (iframe بۆ Daily/Whereby Embedded، ئەگەرنا دوگمەی کردنەوە).
+   ئەگەر هەمان ژوور پێشتر کراوەتەوە، دووبارە دروستی ناکەینەوە (پەیوەندی نەپچڕێت). */
+function showMeetRoom(wrap, head, meet) {
+  if (wrap.dataset.meet === meet && wrap.querySelector(".meet-frame, .meet-room")) return;
+  wrap.dataset.meet = meet;
 
   let host = "";
   try { host = new URL(meet).hostname.toLowerCase(); } catch (_) {}
@@ -608,13 +731,28 @@ function initMeeting() {
       <p class="muted meet-tip">ئەگەر داوای ڕێگەپێدانی کامێرا و مایکرۆفۆن کرا، «Allow» دابگرە.</p>`;
   } else {
     wrap.innerHTML = `${head}
-      <div class="empty-state">
+      <div class="empty-state meet-room">
         <div class="empty-icon">🎥</div>
         <h3>ژووری چاوپێکەوتن ئامادەیە</h3>
         <p>ئەم ژوورە لە پەنجەرەی خۆیدا دەکرێتەوە — پزیشک ڕێگەت پێدەدات بۆ چوونەژوورەوە.</p>
         <a class="btn btn-primary" href="${meet}" target="_blank" rel="noopener">چوونە ناو ژوورەکە</a>
       </div>`;
   }
+}
+
+/* ٢٠ خولەک دوای دەستپێک — ژوورەکە لە شوێنی خۆیدا دابخە (iframe لاببە تاکو
+   کامێرا/مایک بوەستێت) و پەیامێک پیشان بدە. نوێکردنەوەی پەڕە سوودی نییە
+   چونکە هەمان پشکنینی کات دیسان دەیداخات. */
+function endMeetingInPlace(wrap) {
+  clearMeetTimers();
+  wrap.dataset.meet = "";
+  wrap.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">🕐</div>
+      <h3>کاتی چاوپێکەوتنەکە تەواو بوو</h3>
+      <p>هیچ چاوپێکەوتنێک ناتوانێت لە ٢٠ خولەک درێژتر بێت. ئەگەر پێویستت بە کاتێکی تر هەیە، تکایە چاوپێکەوتنێکی نوێ تۆمار بکە. سوپاس بۆ بەکارهێنانی نەخۆشم.</p>
+      <a class="btn btn-primary" href="appointments.html">گەڕانەوە بۆ چاوپێکەوتنەکانم</a>
+    </div>`;
 }
 
 /* ---------- پەیجی گفتوگۆ (chat.html) ---------- */
@@ -743,23 +881,49 @@ function initAppointments() {
         ${b.symptoms ? `<p class="appt-sym">📝 ${b.symptoms}</p>` : ""}
       </div>
       <div class="appt-side">
-        ${meet
-          ? `<a class="btn btn-sm btn-primary" href="meeting.html?doctor=${b.doctorId}">🎥 چوونە ناو چاوپێکەوتن</a>
-             <span class="muted appt-wait">🕐 تکایە ڕێک لە کاتی دیاریکراودا بچۆ ژوورەوە</span>`
-          : `<span class="muted appt-wait">📞 پزیشک لە کاتی دیاریکراودا پەیوەندیت پێوە دەکات</span>`}
+        ${apptJoinCell(b, meet)}
         <button class="btn btn-sm btn-ghost" data-cancel="${b.id}">هەڵوەشاندنەوە</button>
       </div>
     </article>`;
   }).join("");
 
-  wrap.addEventListener("click", e => {
-    const btn = e.target.closest("[data-cancel]");
-    if (!btn) return;
-    if (confirm("دڵنیایت لە هەڵوەشاندنەوەی ئەم چاوپێکەوتنە؟")) {
-      cancelBooking(btn.dataset.cancel);
-      initAppointments();
-    }
-  });
+  // لیسنەری کلیک تەنها جارێک پەیوەست دەکرێت (نەک هەر جارەی نوێکردنەوە)
+  if (!wrap.dataset.bound) {
+    wrap.dataset.bound = "1";
+    wrap.addEventListener("click", e => {
+      const btn = e.target.closest("[data-cancel]");
+      if (!btn) return;
+      if (confirm("دڵنیایت لە هەڵوەشاندنەوەی ئەم چاوپێکەوتنە؟")) {
+        cancelBooking(btn.dataset.cancel);
+        initAppointments();
+      }
+    });
+    // دوگمەی چوونەژوورەوە لە کاتی دیاریکراودا خۆی دەردەکەوێت/نامێنێت —
+    // بۆیە لیست هەر خولەکێک نوێ دەکەینەوە بەبێ پێویستی نوێکردنەوەی دەستی.
+    setInterval(initAppointments, 60000);
+  }
+}
+
+/* خانەی دوگمەی چوونەژوورەوە لە لیستی چاوپێکەوتنەکان — بەپێی پەنجەرەی کات */
+function apptJoinCell(b, meet) {
+  if (!meet) {
+    return `<span class="muted appt-wait">📞 پزیشک لە کاتی دیاریکراودا پەیوەندیت پێوە دەکات</span>`;
+  }
+  const joinBtn = `<a class="btn btn-sm btn-primary" href="meeting.html?doctor=${b.doctorId}">🎥 چوونە ناو چاوپێکەوتن</a>`;
+  const w = meetWindow(b);
+  switch (w.state) {
+    case "open":
+      return `${joinBtn}<span class="muted appt-wait">🟢 ئێستا دەتوانیت بچیتە ژوورەوە</span>`;
+    case "before":
+      return `<span class="muted appt-wait">🕐 دوگمەکە لە کاتی ${clockLabel(w.start)} دەردەکەوێت</span>`;
+    case "live":
+      return `<span class="muted appt-wait">🔴 چاوپێکەوتنەکە بەردەوامە — کاتەکە لە کۆتایی نزیکە</span>`;
+    case "ended":
+      return `<span class="muted appt-wait">✓ ئەم چاوپێکەوتنە تەواو بوو</span>`;
+    default:
+      // کاتی تۆمارەکە نەزانراوە (تۆماری کۆن) — وەک پێشتر دوگمەکە پیشان بدە
+      return joinBtn;
+  }
 }
 
 /* ---------- پەیجی خزمەتگوزارییەکان (specialties.html) ---------- */
@@ -822,9 +986,12 @@ document.addEventListener("DOMContentLoaded", () => {
     renderChrome(page);
     if (page !== "chat") initFn();
   });
-  // کاتێک تۆمارکردنەکان دەگۆڕێن، تەنها پەڕەی چاوپێکەوتنەکان نوێ بکەرەوە
+  // کاتێک تۆمارکردنەکان دەگۆڕێن (یان لە هەورەوە دێن دوای بارکردنی پەڕە)،
+  // پەڕەی چاوپێکەوتنەکان و پەڕەی ژووری چاوپێکەوتن نوێ بکەرەوە — پەڕەی ژوور
+  // پێویستی بە تۆمارەکان هەیە بۆ پشکنینی ناسنامە و کات.
   document.addEventListener("naxosh:bookings", () => {
     if (page === "appointments") initAppointments();
+    else if (page === "meeting") initMeeting();
   });
   // کاتێک دۆخی ناسنامە دەگۆڕێت (چوونەژوورەوەی نهێنی/بەڕێوەبەر) — مینۆ نوێ بکەرەوە
   document.addEventListener("naxosh:auth", () => renderChrome(page));

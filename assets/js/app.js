@@ -581,8 +581,15 @@ function initMeeting() {
 
   if (embeddable) {
     let src = meet;
-    if (isWherebyEmbedded && !/[?&]embed\b/.test(src)) {
-      src += (src.includes("?") ? "&" : "?") + "embed";
+    const addParam = (u, kv) => u + (u.includes("?") ? "&" : "?") + kv;
+    if (isWherebyEmbedded) {
+      // ناوی نەخۆش پێشوەخت بنێرە — بۆیە Whereby پەڕەی «Your name» تێناپەڕێنێت
+      const u = (typeof NAXOSH !== "undefined" && NAXOSH.getUser) ? NAXOSH.getUser() : null;
+      const nm = (u && u.name) ? u.name : "میوان";
+      if (!/[?&]embed\b/.test(src)) src = addParam(src, "embed");
+      if (!/[?&]displayName=/.test(src)) src = addParam(src, "displayName=" + encodeURIComponent(nm));
+      // پەڕەی پێش‌چوونەژوورەوە (precall) لاببە تاکو ڕاستەوخۆ بچێتە ژوورەوە
+      if (!/[?&]precallReview=/.test(src)) src = addParam(src, "precallReview=off");
     }
     wrap.innerHTML = `${head}
       <iframe class="meet-frame" src="${src}"

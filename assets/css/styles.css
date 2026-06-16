@@ -551,7 +551,13 @@ body.has-tabbar { padding-bottom: 78px; }
   content: ""; display: block; width: 52px; height: 4px; border-radius: 4px;
   background: var(--teal); margin: 18px auto 0;
 }
-.home-wrap .doc-grid { margin-top: 24px; }
+.home-wrap .doc-grid { margin-top: 12px; }
+
+/* ناونیشانی «دکتۆرەکان» لە ژێر فلتەرەکان */
+.section-label {
+  max-width: 520px; margin: 22px auto 4px; font-size: 1.12rem; font-weight: 800;
+  color: var(--teal-dark);
+}
 
 /* لیستی پزیشک — کارتێکی گەورەی کرتەکراو */
 .doc-grid { grid-template-columns: 1fr; max-width: 520px; margin: 0 auto; gap: 14px; }
@@ -581,3 +587,45 @@ body.has-tabbar { padding-bottom: 78px; }
 
 /* FAB ـی دەستکاری (بەڕێوەبەر) لەسەر تابەکە نەبێت */
 .nx-fab { inset-block-end: 92px; }
+
+/* ============================================================
+   پەڕگەی پزیشکی (هاوپێچ) — فۆڕمی تۆمارکردن، ژووری چاوپێکەوتن،
+   لیستی چاوپێکەوتنەکان، داشبۆردی پزیشک/بەڕێوەبەر
+   ============================================================ */
+.attach-label { display: block; font-weight: 700; font-size: 0.92rem; margin: 16px 0 8px; }
+.attach-hint { font-size: 0.82rem; margin: 6px 0 0; }
+.attach-btn { margin-top: 4px; }
+.attach-preview:empty { display: none; }
+
+.attach-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 2px; }
+.attach-item { position: relative; width: 84px; }
+.attach-thumb {
+  display: flex; align-items: center; justify-content: center;
+  width: 84px; height: 84px; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--line); background: #f8fafc;
+}
+.attach-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.attach-file-ico { font-size: 2.1rem; }
+.attach-name {
+  display: block; margin-top: 4px; font-size: 0.7rem; color: var(--gray);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
+}
+.attach-rm {
+  position: absolute; inset-block-start: -6px; inset-inline-start: -6px;
+  width: 22px; height: 22px; border-radius: 50%; border: none; cursor: pointer;
+  background: #ef4444; color: #fff; font-size: 0.78rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow);
+}
+
+/* پانێڵی هاوپێچ لەناو ژووری چاوپێکەوتن */
+.meet-attach {
+  margin-top: 14px; padding: 14px 16px; border: 1px solid var(--line);
+  border-radius: var(--radius); background: #fff;
+}
+.meet-attach-head { font-weight: 800; font-size: 0.98rem; margin-bottom: 8px; }
+.attach-empty { font-size: 0.86rem; margin: 0 0 8px; }
+
+/* هاوپێچ لە کارتی چاوپێکەوتن و داشبۆردەکان — تەسبیحەی بچووکتر */
+.appt-attach, .adm-attach { margin-top: 8px; font-size: 0.82rem; color: var(--gray); }
+.appt-attach .attach-thumb, .adm-attach .attach-thumb { width: 60px; height: 60px; }
+.appt-attach .attach-item, .adm-attach .attach-item { width: 60px; }

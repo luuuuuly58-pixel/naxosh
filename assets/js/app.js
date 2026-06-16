@@ -194,6 +194,128 @@ function cancelBooking(id) {
   }
 }
 
+/* ---------- پەڕگەکانی پزیشکی (هاوپێچ) ----------
+   هاوپێچەکان لەناو خودی تۆماری چاوپێکەوتنەکەدا (booking.attachments)
+   هەڵدەگیرێن وەک دەقی base64. بۆیە بەبێ هیچ ڕێکخستنێکی زیادە، هەمان
+   تۆمار هاوکات بۆ نەخۆش و پزیشک و بەڕێوەبەر دەگوازرێتەوە لە هەورەوە —
+   واتە پزیشک هاوپێچەکان دەبینێت لەو ساتەوەی نەخۆش زیادی دەکات، پێش
+   دەستپێکی چاوپێکەوتنەکەش. وێنەکان بچووک دەکرێنەوە تاکو لە سنووری
+   ١MB ـی هەر بەڵگەنامەیەکی Firestore نەترازێن. */
+const ATTACH_MAX_DIM     = 1400;          // درێژترین لای وێنە (px)
+const ATTACH_IMG_QUALITY = 0.7;           // کوالێتیی JPEG
+const ATTACH_MAX_BYTES   = 900 * 1024;    // زۆرترین قەبارەی هەر پەڕگەیەک (≈٩٠٠KB)
+
+function escAttr(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+/* وێنە بچووک بکەرەوە (canvas) و وەک JPEG بیگەڕێنەرەوە — قەبارە کەم دەکاتەوە */
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+      const scale = Math.min(1, ATTACH_MAX_DIM / Math.max(w, h));
+      w = Math.max(1, Math.round(w * scale));
+      h = Math.max(1, Math.round(h * scale));
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      try { resolve(c.toDataURL("image/jpeg", ATTACH_IMG_QUALITY)); }
+      catch (e) { reject(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image")); };
+    img.src = url;
+  });
+}
+
+/* پەڕگەیەک بکە بە ئۆبجێکتی هاوپێچ. وێنە بچووک دەکرێتەوە؛ ئەگەر دوای
+   ئەوەش هێشتا گەورە بێت {tooBig:true} دەگەڕێتەوە. */
+async function fileToAttachment(file, by) {
+  const isImg = /^image\//.test(file.type || "");
+  let data;
+  if (isImg) {
+    try { data = await compressImage(file); }
+    catch { data = await readFileAsDataURL(file); }
+  } else {
+    data = await readFileAsDataURL(file);
+  }
+  // درێژیی دەقی base64 ≈ ٤/٣ ـی ژمارەی بایتەکان
+  if (typeof data !== "string" || data.length > ATTACH_MAX_BYTES * 1.37) {
+    return { tooBig: true, name: file.name };
+  }
+  return {
+    id: newBookingId(),
+    name: file.name || (isImg ? "وێنە.jpg" : "پەڕگە"),
+    type: isImg ? "image/jpeg" : (file.type || "application/octet-stream"),
+    data, by: by || "patient", at: Date.now()
+  };
+}
+
+/* لیستێک پەڕگە بکە بە هاوپێچ — ئەوانەی زۆر گەورەن ئاگادارکردنەوەیان بۆ دەکرێت */
+async function filesToAttachments(fileList, by) {
+  const out = [], tooBig = [];
+  for (const f of Array.from(fileList || [])) {
+    try {
+      const a = await fileToAttachment(f, by);
+      if (a.tooBig) tooBig.push(a.name); else out.push(a);
+    } catch (_) { tooBig.push(f.name); }
+  }
+  if (tooBig.length) {
+    alert("ئەم پەڕگانە زۆر گەورەن و زیاد نەکران:\n• " + tooBig.join("\n• ") +
+          "\n\nتکایە وێنەیەکی بچووکتر یان پەڕگەیەکی بچووکتر هەڵبژێرە.");
+  }
+  return out;
+}
+
+/* پیشاندانی هاوپێچەکان — وێنە وەک تەسبیحەی بچووک، پەڕگەی تر وەک بەستەر.
+   opts.removable=true → دوگمەی سڕینەوە (لە فۆڕمی تۆمارکردندا).
+   کرتە لەسەر هەر یەکێک لە تابێکی نوێ دەیکاتەوە. */
+function attachmentsHtml(list, opts) {
+  opts = opts || {};
+  if (!Array.isArray(list) || !list.length) return "";
+  const items = list.map(a => {
+    const isImg = /^image\//.test(a.type || "");
+    const thumb = isImg
+      ? `<img src="${a.data}" alt="${escAttr(a.name)}" loading="lazy">`
+      : `<span class="attach-file-ico">📄</span>`;
+    const rm = opts.removable
+      ? `<button type="button" class="attach-rm" data-attach="${escAttr(a.id)}" aria-label="سڕینەوە">✕</button>` : "";
+    return `<div class="attach-item">
+      <a class="attach-thumb" href="${a.data}" target="_blank" rel="noopener" download="${escAttr(a.name)}">${thumb}</a>
+      <span class="attach-name">${escAttr(a.name)}</span>
+      ${rm}
+    </div>`;
+  }).join("");
+  return `<div class="attach-list">${items}</div>`;
+}
+
+/* هاوپێچی نوێ زیاد بکە بۆ تۆمارێکی هەبوو — ناوخۆیی پاشەکەوتی بکە و بۆ
+   هەوریش بینێرە (بۆیە پزیشک یەکسەر دەیبینێت). لیستی نوێ دەگەڕێنێتەوە. */
+function addAttachmentsToBooking(bookingId, newAtts) {
+  bookingId = String(bookingId);
+  const list = getBookings();
+  const b = list.find(x => String(x.id) === bookingId);
+  if (!b) return null;
+  b.attachments = (Array.isArray(b.attachments) ? b.attachments : []).concat(newAtts || []);
+  localStorage.setItem("naxosh_bookings", JSON.stringify(list));
+  if (window.NAXOSH_DB && NAXOSH_DB.active) NAXOSH_DB.updateBooking(bookingId, { attachments: b.attachments });
+  return b.attachments;
+}
+
 function getChat(doctorId) {
   try { return JSON.parse(localStorage.getItem("naxosh_chat_" + doctorId) || "[]"); }
   catch { return []; }
@@ -484,16 +606,48 @@ function initDoctorProfile() {
       <div class="days" id="days"></div>
       <label class="book-label">کات</label>
       <div class="slots" id="slots"></div>
-      <a href="#" class="note-toggle" id="note-toggle">＋ تێبینی زیاد بکە</a>
-      <textarea id="symptoms" rows="3" placeholder="نیشانەکانت بنووسە..." hidden></textarea>
+      <a href="#" class="note-toggle" id="note-toggle">＋ تێبینی و پەڕگەی پزیشکی زیاد بکە</a>
+      <div id="note-extra" hidden>
+        <textarea id="symptoms" rows="3" placeholder="نیشانەکانت بنووسە..."></textarea>
+        <label class="attach-label">📎 پەڕگەی پزیشکی (تۆماری پێشوو، وێنەی پشکنین، ...)</label>
+        <input type="file" id="attach-input" accept="image/*,application/pdf" multiple hidden>
+        <button type="button" class="btn btn-ghost btn-block attach-btn" id="attach-btn">📎 هەڵبژاردنی پەڕگە</button>
+        <p class="muted attach-hint">دکتۆرەکەت پێش چاوپێکەوتنەکە دەیبینێت.</p>
+        <div class="attach-preview" id="attach-preview"></div>
+      </div>
       <button class="btn btn-primary btn-block btn-lg" id="confirm-btn">تۆمارکردنی ڤیدیۆچات</button>
     </div>`;
 
-  // تێبینی شاراوەیە تاکو پەڕە ساکار بێت — کرتە لێبکە بۆ کردنەوەی
+  // تێبینی و پەڕگەکان شاراوەن تاکو پەڕە ساکار بێت — کرتە لێبکە بۆ کردنەوەی
   const noteToggle = document.getElementById("note-toggle");
+  const noteExtra = document.getElementById("note-extra");
   const symBox = document.getElementById("symptoms");
   noteToggle.addEventListener("click", e => {
-    e.preventDefault(); symBox.hidden = false; noteToggle.style.display = "none"; symBox.focus();
+    e.preventDefault(); noteExtra.hidden = false; noteToggle.style.display = "none"; symBox.focus();
+  });
+
+  // هاوپێچەکان (پەڕگەی پزیشکی) — لە کاتی تۆمارکردندا کۆ دەکرێنەوە
+  let pendingAttach = [];
+  const attachInput = document.getElementById("attach-input");
+  const attachBtn = document.getElementById("attach-btn");
+  const attachPreview = document.getElementById("attach-preview");
+  function renderPendingAttach() {
+    attachPreview.innerHTML = attachmentsHtml(pendingAttach, { removable: true });
+  }
+  attachBtn.addEventListener("click", () => attachInput.click());
+  attachInput.addEventListener("change", async () => {
+    attachBtn.disabled = true;
+    const prev = attachBtn.textContent; attachBtn.textContent = "...چاوەڕێ بکە";
+    const added = await filesToAttachments(attachInput.files, "patient");
+    attachInput.value = "";
+    pendingAttach = pendingAttach.concat(added);
+    attachBtn.disabled = false; attachBtn.textContent = prev;
+    renderPendingAttach();
+  });
+  attachPreview.addEventListener("click", e => {
+    const rm = e.target.closest(".attach-rm"); if (!rm) return;
+    pendingAttach = pendingAttach.filter(a => a.id !== rm.dataset.attach);
+    renderPendingAttach();
   });
 
   // ڕۆژەکان (٧ ڕۆژی داهاتوو) — تەنها ئەو ڕۆژانە بەردەستن کە پزیشک کاری تێدا دەکات
@@ -587,6 +741,7 @@ function initDoctorProfile() {
         day: `${dayLabel} ${toKurdishDigits(dt.getDate())}ی مانگ`,
         time: chosenSlot,
         symptoms: document.getElementById("symptoms").value.trim(),
+        attachments: pendingAttach.slice(),
         userName: user ? user.name : "",
         userPhone: user ? user.phone : "",
         phoneKey: user ? user.phoneKey : ""
@@ -696,15 +851,20 @@ function initMeeting() {
   }
 
   // چالاک (open یان live) — ژوورەکە پیشان بدە و تایمەری داخستن دابنێ
-  showMeetRoom(wrap, head, meet);
+  showMeetRoom(wrap, head, meet, active.booking);
   const ms = active.window.hardAt - Date.now();
   _meetHardTimer = setTimeout(() => endMeetingInPlace(wrap), Math.max(1000, ms));
 }
 
 /* ژوورەکە پیشان بدە (iframe بۆ Daily/Whereby Embedded، ئەگەرنا دوگمەی کردنەوە).
    ئەگەر هەمان ژوور پێشتر کراوەتەوە، دووبارە دروستی ناکەینەوە (پەیوەندی نەپچڕێت). */
-function showMeetRoom(wrap, head, meet) {
-  if (wrap.dataset.meet === meet && wrap.querySelector(".meet-frame, .meet-room")) return;
+function showMeetRoom(wrap, head, meet, booking) {
+  // ئەگەر هەمان ژوور پێشتر کراوەتەوە، iframe دووبارە دروست ناکەینەوە (پەیوەندی
+  // نەپچڕێت) — بەڵام لیستی هاوپێچەکان نوێ دەکەینەوە (لەوانەیە گۆڕابن).
+  if (wrap.dataset.meet === meet && wrap.querySelector(".meet-frame, .meet-room")) {
+    renderMeetAttach(booking);
+    return;
+  }
   wrap.dataset.meet = meet;
 
   let host = "";
@@ -731,7 +891,8 @@ function showMeetRoom(wrap, head, meet) {
       <iframe class="meet-frame" src="${src}"
         allow="camera; microphone; fullscreen; display-capture; autoplay"
         allowfullscreen></iframe>
-      <p class="muted meet-tip">ئەگەر داوای ڕێگەپێدانی کامێرا و مایکرۆفۆن کرا، «Allow» دابگرە.</p>`;
+      <p class="muted meet-tip">ئەگەر داوای ڕێگەپێدانی کامێرا و مایکرۆفۆن کرا، «Allow» دابگرە.</p>
+      <div class="meet-attach" id="meet-attach"></div>`;
   } else {
     wrap.innerHTML = `${head}
       <div class="empty-state meet-room">
@@ -739,8 +900,37 @@ function showMeetRoom(wrap, head, meet) {
         <h3>ژووری چاوپێکەوتن ئامادەیە</h3>
         <p>ئەم ژوورە لە پەنجەرەی خۆیدا دەکرێتەوە — پزیشک ڕێگەت پێدەدات بۆ چوونەژوورەوە.</p>
         <a class="btn btn-primary" href="${meet}" target="_blank" rel="noopener">چوونە ناو ژوورەکە</a>
-      </div>`;
+      </div>
+      <div class="meet-attach" id="meet-attach"></div>`;
   }
+  renderMeetAttach(booking);
+}
+
+/* پانێڵی هاوپێچەکان لەناو ژووری چاوپێکەوتندا — نەخۆش (یان پزیشک) دەتوانێت
+   لە کاتی چاوپێکەوتنەکەدا پەڕگەی نوێ زیاد بکات (بۆ نموونە کاتێک پزیشک
+   داوای تۆمارێکی پزیشکی دەکات). دواتر یەکسەر بۆ هەور دەنێردرێت. */
+function renderMeetAttach(booking) {
+  const box = document.getElementById("meet-attach");
+  if (!box || !booking) return;
+  const list = Array.isArray(booking.attachments) ? booking.attachments : [];
+  box.innerHTML = `
+    <div class="meet-attach-head">📎 پەڕگە و تۆمارە پزیشکییەکان</div>
+    ${list.length ? attachmentsHtml(list) : `<p class="muted attach-empty">هێشتا هیچ پەڕگەیەک زیاد نەکراوە.</p>`}
+    <input type="file" id="meet-attach-input" accept="image/*,application/pdf" multiple hidden>
+    <button type="button" class="btn btn-ghost btn-sm" id="meet-attach-btn">📎 پەڕگە زیاد بکە</button>`;
+  const input = box.querySelector("#meet-attach-input");
+  const btn = box.querySelector("#meet-attach-btn");
+  btn.addEventListener("click", () => input.click());
+  input.addEventListener("change", async () => {
+    btn.disabled = true; const prev = btn.textContent; btn.textContent = "...چاوەڕێ بکە";
+    const added = await filesToAttachments(input.files, "patient");
+    input.value = "";
+    if (added.length) {
+      const updated = addAttachmentsToBooking(booking.id, added);
+      if (updated) booking.attachments = updated;
+    }
+    renderMeetAttach(booking);   // دووبارە پیشاندان (لیست + دوگمەی نوێ)
+  });
 }
 
 /* ٢٠ خولەک دوای دەستپێک — ژوورەکە لە شوێنی خۆیدا دابخە (iframe لاببە تاکو
@@ -882,6 +1072,7 @@ function initAppointments() {
         <p class="muted">${specName(b.spec)}</p>
         <p class="appt-when">📅 ${b.day} — 🕐 ${b.time}</p>
         ${b.symptoms ? `<p class="appt-sym">📝 ${b.symptoms}</p>` : ""}
+        ${b.attachments && b.attachments.length ? `<div class="appt-attach">📎 ${attachmentsHtml(b.attachments)}</div>` : ""}
       </div>
       <div class="appt-side">
         ${apptJoinCell(b, meet)}
@@ -954,13 +1145,15 @@ function initSpecialties() {
 function initHome() {
   const root = document.getElementById("home-root");
   if (!root) return;
-  // پەڕەی سەرەتا = ناونیشان + فلتەری ئایکۆن + لیستی دکتۆرەکان لە خوارەوە
+  // پەڕەی سەرەتا = ناونیشان + فلتەر (بە پیشاندراوی لە سەرەتاوە) + ناونیشانی
+  // «دکتۆرەکان» + لیستی دکتۆرەکان لە خوارەوە
   root.innerHTML = `
     <h2 class="home-title">دکتۆرێک لە خوارەوە هەڵبژێرە و ڤیدیۆچات لەگەڵی تۆمار بکە</h2>
     <div class="filter-wrap">
-      <button class="filter-toggle" id="filter-toggle" aria-expanded="false" aria-label="فلتەرکردن بەپێی پسپۆڕی">${FILTER_ICON}</button>
-      <div class="filter-bar" id="filter-bar" hidden></div>
+      <button class="filter-toggle open" id="filter-toggle" aria-expanded="true" aria-label="فلتەرکردن بەپێی پسپۆڕی">${FILTER_ICON}</button>
+      <div class="filter-bar" id="filter-bar"></div>
     </div>
+    <h3 class="section-label">دکتۆرەکان</h3>
     <div class="doc-grid" id="doc-grid"></div>`;
   // هەمان لۆجیکی فلتەرکردن و لیستکردنی پەڕەی پزیشکەکان بەکاردەهێنینەوە
   initDoctors();

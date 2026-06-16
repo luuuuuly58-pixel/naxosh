@@ -131,6 +131,7 @@
           <span class="muted" dir="ltr">${esc(b.userPhone) || "—"}</span>
           <p>📅 ${esc(b.day)} — 🕐 ${esc(b.time)}</p>
           ${b.symptoms ? `<p class="muted">📝 ${esc(b.symptoms)}</p>` : ""}
+          ${b.attachments && b.attachments.length ? `<div class="adm-attach">📎 تۆماری پزیشکی:${attachmentsHtml(b.attachments)}</div>` : ""}
         </div>
         <div class="adm-booking-side">
           ${meet ? `<a class="btn btn-sm btn-primary" href="meeting.html?doctor=${b.doctorId}">🎥 ژوورەکەم</a>` : ""}

@@ -383,6 +383,7 @@
           <p class="muted">پزیشک: ${esc(b.doctorName)} • ${esc(specName(b.spec))}</p>
           <p>📅 ${esc(b.day)} — 🕐 ${esc(b.time)}</p>
           ${b.symptoms ? `<p class="muted">📝 ${esc(b.symptoms)}</p>` : ""}
+          ${b.attachments && b.attachments.length ? `<div class="adm-attach">📎 تۆماری پزیشکی:${attachmentsHtml(b.attachments)}</div>` : ""}
         </div>
         <div class="adm-booking-side">
           ${meet ? `<a class="btn btn-sm btn-ghost" href="meeting.html?doctor=${b.doctorId}" target="_blank" rel="noopener">🎥 ژووری پزیشک</a>` : ""}

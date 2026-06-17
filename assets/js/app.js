@@ -431,16 +431,35 @@ function goBack() {
   else location.href = "index.html";
 }
 
+/* تابی خوارەوە — لە هەموو پەڕەکاندا (لەوانە داشبۆردی بەڕێوەبەر/پزیشک)
+   بۆ ئەوەی هەمیشە بتوانرێت بگەڕێیتەوە سەرەتا یان چاوپێکەوتنەکان. */
+function tabbarHtml(activeTab) {
+  const tab = id => activeTab === id ? "tab tab-active" : "tab";
+  return `
+    <nav class="tabbar">
+      <a href="index.html" class="${tab('home')}">
+        <span class="tab-ico">🏠</span><span>سەرەتا</span>
+      </a>
+      <a href="appointments.html" class="${tab('appts')}">
+        <span class="tab-ico">📅</span><span>چاوپێکەوتنەکانم</span>
+      </a>
+      <a href="#" class="${tab('account')}" onclick="openAccount();return false">
+        <span class="tab-ico">👤</span><span>${accountLabel()}</span>
+      </a>
+    </nav>`;
+}
+
 function renderChrome(active) {
   const header = document.getElementById("site-header");
   const footer = document.getElementById("site-footer");
 
-  // پەڕەکانی بەڕێوەبەر/پزیشک باری تایبەتی خۆیان هەیە — بار و تابی نەخۆشیان پێ نادرێت
+  // پەڕەکانی بەڕێوەبەر/پزیشک باری تایبەتی خۆیان هەیە — سەردێڕیان پێ نادرێت،
+  // بەڵام تابی خوارەوە دەهێڵدرێتەوە بۆ گەڕانەوە بۆ سەرەتا/چاوپێکەوتنەکان
   const isPanel = document.getElementById("admin-root") || document.getElementById("dr-root");
   if (isPanel) {
     if (header) header.innerHTML = "";
-    if (footer) footer.innerHTML = "";
-    document.body.classList.remove("has-tabbar");
+    if (footer) footer.innerHTML = tabbarHtml("account");
+    document.body.classList.add("has-tabbar");
     return;
   }
 
@@ -461,21 +480,7 @@ function renderChrome(active) {
       </div>`;
   }
 
-  if (footer) {
-    const tab = id => meta.tab === id ? "tab tab-active" : "tab";
-    footer.innerHTML = `
-      <nav class="tabbar">
-        <a href="index.html" class="${tab('home')}">
-          <span class="tab-ico">🏠</span><span>سەرەتا</span>
-        </a>
-        <a href="appointments.html" class="${tab('appts')}">
-          <span class="tab-ico">📅</span><span>چاوپێکەوتنەکانم</span>
-        </a>
-        <a href="#" class="tab" onclick="openAccount();return false">
-          <span class="tab-ico">👤</span><span>${accountLabel()}</span>
-        </a>
-      </nav>`;
-  }
+  if (footer) footer.innerHTML = tabbarHtml(meta.tab);
 }
 
 /* ---------- چوونەژوورەوەی بەکارهێنەر (ناو + تەلەفۆن) ---------- */

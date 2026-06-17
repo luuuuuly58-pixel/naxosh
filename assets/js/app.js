@@ -79,6 +79,100 @@ function isoDate(dt) {
 }
 
 /* ============================================================
+   کۆی گشتیی خشتە — پیشاندانێکی پاک و ڕوون بۆ پزیشک/بەڕێوەبەر:
+   هەر ڕۆژێکی بەردەستی پزیشک لە چەند ڕۆژی داهاتوودا، لەگەڵ کاتەکانی،
+   و دیاریکردنی ئەوەی کام کات بەردەستە و کام گیراوە لەلایەن نەخۆشەوە.
+   doctor = ئۆبجێکتی پزیشک | opts.days = ژمارەی ڕۆژەکانی داهاتوو (بنەڕەت ١٤)
+   ============================================================ */
+function scheduleOverviewHtml(doctor, opts) {
+  opts = opts || {};
+  if (!doctor) return "";
+  const horizon = opts.days || 14;
+  const dayNames = STR.days || ["یەکشەممە", "دووشەممە", "سێشەممە", "چوارشەممە", "پێنجشەممە", "هەینی", "شەممە"];
+  const avail = docDays(doctor);
+
+  // تۆمارەکانی ئەم پزیشکە، بەپێی «ڕێکەوت|کات»
+  const byKey = {};
+  getBookings().forEach(b => {
+    if (Number(b.doctorId) !== Number(doctor.id)) return;
+    if (!b.date || !b.time) return;
+    byKey[b.date + "|" + b.time] = b;
+  });
+
+  const slotMin = t => {
+    const m = fromKurdishDigits(String(t)).match(/(\d{1,2}):(\d{2})/);
+    return m ? (+m[1]) * 60 + (+m[2]) : 0;
+  };
+
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  const nowMs = new Date().getTime();
+  let freeCount = 0, busyCount = 0;
+  const dayCards = [];
+
+  for (let i = 0; i < horizon; i++) {
+    const dt = new Date(start.getTime() + i * 86400000);
+    const wd = dt.getDay();
+    if (!avail.includes(wd)) continue;
+    const date = isoDate(dt);
+
+    // کاتەکانی خشتە + هەر کاتێکی گیراو کە ئێستا لە خشتەدا نەماوە
+    const times = docSlots(doctor, wd).slice();
+    const seen = new Set(times);
+    Object.keys(byKey).forEach(k => {
+      const sep = k.indexOf("|");
+      const d2 = k.slice(0, sep), t2 = k.slice(sep + 1);
+      if (d2 === date && !seen.has(t2)) { times.push(t2); seen.add(t2); }
+    });
+    if (!times.length) continue;
+    times.sort((a, b) => slotMin(a) - slotMin(b));
+
+    const chips = times.map(t => {
+      const bk = byKey[date + "|" + t];
+      if (bk) {
+        busyCount++;
+        return `<span class="sched-slot is-busy" title="${escAttr((bk.userName || "نەخۆش") + " — " + (bk.userPhone || ""))}">
+          <span class="sched-slot-t">${escAttr(t)}</span>
+          <span class="sched-slot-who">${escAttr(bk.userName || "نەخۆش")}</span>
+        </span>`;
+      }
+      const st = bookingStart({ date, time: t });
+      const past = st && st.getTime() < nowMs;
+      if (!past) freeCount++;
+      return `<span class="sched-slot is-free${past ? " is-past" : ""}">
+        <span class="sched-slot-t">${escAttr(t)}</span>
+        <span class="sched-slot-who">${past ? "تێپەڕی" : "بەردەست"}</span>
+      </span>`;
+    }).join("");
+
+    dayCards.push(`
+      <div class="sched-day">
+        <div class="sched-day-head">
+          <span class="sched-day-name">${escAttr(dayNames[wd])}</span>
+          <span class="sched-day-date">${toKurdishDigits(dt.getDate())}ی مانگ</span>
+          ${i === 0 ? `<span class="sched-today">ئەمڕۆ</span>` : ""}
+        </div>
+        <div class="sched-slots">${chips}</div>
+      </div>`);
+  }
+
+  if (!dayCards.length) {
+    return `<div class="empty-state"><div class="empty-icon">📅</div>
+      <h3>هیچ ڕۆژێکی بەردەست نییە لەم ${toKurdishDigits(horizon)} ڕۆژەی داهاتوودا.</h3>
+      <p class="muted">ڕۆژ و کاتەکانت لە تابی «خشتە» دابنێ.</p></div>`;
+  }
+
+  return `
+    <div class="sched-ov">
+      <div class="sched-ov-summary">
+        <span class="sched-ov-stat sched-ov-free"><b>${toKurdishDigits(freeCount)}</b> کاتی بەردەست</span>
+        <span class="sched-ov-stat sched-ov-busy"><b>${toKurdishDigits(busyCount)}</b> گیراو لەلایەن نەخۆش</span>
+        <span class="sched-ov-note">لە ${toKurdishDigits(horizon)} ڕۆژی داهاتوودا</span>
+      </div>
+      <div class="sched-ov-days">${dayCards.join("")}</div>
+    </div>`;
+}
+
+/* ============================================================
    پەنجەرەی کاتی چاوپێکەوتن
    ------------------------------------------------------------
    • دوگمەی چوونەژوورەوە ٥ خولەک پێش کاتی دیاریکراو دەردەکەوێت.

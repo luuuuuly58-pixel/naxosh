@@ -425,6 +425,57 @@ textarea:focus { outline: none; border-color: var(--teal); }
 .dr-dayslot > input:focus { outline: none; border-color: var(--teal); }
 .dr-dayslot.is-off { opacity: 0.5; }
 
+/* ---------- کۆی گشتیی خشتە (بەردەست/گیراو) ---------- */
+.sched-ov-summary {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px;
+}
+.sched-ov-stat { font-size: 0.92rem; color: var(--gray); display: inline-flex; align-items: center; gap: 6px; }
+.sched-ov-stat b { font-size: 1.15rem; font-weight: 800; }
+.sched-ov-stat::before { content: ""; width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.sched-ov-free::before { background: var(--teal, #0d9488); }
+.sched-ov-busy::before { background: #ef4444; }
+.sched-ov-free b { color: var(--teal-dark, #0f766e); }
+.sched-ov-busy b { color: #dc2626; }
+.sched-ov-note { font-size: 0.82rem; color: var(--gray); margin-inline-start: auto; }
+
+.sched-ov-days { display: flex; flex-direction: column; gap: 10px; }
+.sched-day {
+  border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: #fff;
+}
+.sched-day-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.sched-day-name { font-weight: 800; }
+.sched-day-date { color: var(--gray); font-size: 0.86rem; }
+.sched-today {
+  margin-inline-start: auto; background: var(--teal-light, #ccfbf1); color: var(--teal-dark, #0f766e);
+  font-size: 0.72rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;
+}
+.sched-slots { display: flex; flex-wrap: wrap; gap: 8px; }
+.sched-slot {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-width: 78px; padding: 8px 10px; border-radius: 12px; border: 1.5px solid;
+  font-size: 0.9rem; line-height: 1.1;
+}
+.sched-slot-t { font-weight: 800; direction: ltr; }
+.sched-slot-who { font-size: 0.7rem; font-weight: 700; }
+.sched-slot.is-free {
+  border-color: var(--teal, #0d9488); background: #f0fdfa; color: var(--teal-dark, #0f766e);
+}
+.sched-slot.is-busy {
+  border-color: #ef4444; background: #fef2f2; color: #dc2626;
+}
+.sched-slot.is-busy .sched-slot-who {
+  max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sched-slot.is-past {
+  border-color: var(--line); background: #f8fafc; color: var(--gray); opacity: .8;
+}
+
+.dr-ov-details > summary {
+  cursor: pointer; font-weight: 700; color: var(--teal-dark, #0f766e);
+  padding: 6px 0; user-select: none;
+}
+.dr-ov-details[open] > summary { margin-bottom: 10px; }
+
 .adm-booking { display: flex; justify-content: space-between; gap: 14px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 12px; box-shadow: var(--shadow); }
 .adm-booking strong { font-size: 1.05rem; }
 .adm-booking .muted { margin-inline-start: 8px; }

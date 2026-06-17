@@ -73,7 +73,7 @@
     const T = STR.admin.tabs;
     const tabs = [
       ["texts", T.texts], ["doctors", T.doctors], ["specialties", T.specialties],
-      ["bookings", T.bookings], ["settings", T.settings]
+      ["schedules", T.schedules], ["bookings", T.bookings], ["settings", T.settings]
     ];
     root.innerHTML = `
       <div class="adm-wrap container">
@@ -131,7 +131,23 @@
     const old = document.getElementById("adm-tab");
     const box = old.cloneNode(false);
     old.replaceWith(box);
-    ({ texts: tabTexts, doctors: tabDoctors, specialties: tabSpecialties, bookings: tabBookings, settings: tabSettings }[activeTab] || tabTexts)(box);
+    ({ texts: tabTexts, doctors: tabDoctors, specialties: tabSpecialties, schedules: tabSchedules, bookings: tabBookings, settings: tabSettings }[activeTab] || tabTexts)(box);
+  }
+
+  /* ---------- تابی خشتەی پزیشکان (کۆی گشتیی هەموو پزیشکان) ---------- */
+  function tabSchedules(box) {
+    const docs = (content && Array.isArray(content.doctors)) ? content.doctors : [];
+    if (!docs.length) {
+      box.innerHTML = `<div class="empty-state"><div class="empty-icon">🩺</div><h3>هیچ پزیشکێک نییە</h3></div>`;
+      return;
+    }
+    box.innerHTML = `
+      <p class="muted">کۆی گشتیی کاتە بەردەست و گیراوەکانی هەموو پزیشکان لە ١٤ ڕۆژی داهاتوودا — سەوز بەردەستە، سوور گیراوە لەلایەن نەخۆش.</p>
+      ${docs.map(d => `
+        <div class="adm-section">
+          <h3>🩺 ${esc(d.name) || "پزیشک"} <span class="muted">${esc(specName(d.spec))}</span></h3>
+          ${scheduleOverviewHtml(d, { days: 14 })}
+        </div>`).join("")}`;
   }
 
   /* ---------- تابی دەقەکان ---------- */
@@ -307,6 +323,12 @@
               }).join("")}
             </div>
           </div>
+          <div class="adm-field adm-full">
+            <details class="dr-ov-details">
+              <summary>📅 کۆی گشتیی خشتە — کاتە بەردەست و گیراوەکان</summary>
+              ${scheduleOverviewHtml(d, { days: 14 })}
+            </details>
+          </div>
           <label class="adm-field adm-full">🎥 بەستەری ژووری چاوپێکەوتن (Google Meet / Whereby — تەنها لێرەوە دادەنرێت)
             <input data-f="meet" value="${esc(d.meet || "")}" dir="ltr" placeholder="https://meet.google.com/abc-defg-hij">
           </label>
@@ -459,11 +481,12 @@
 
   /* ---------- نوێکردنەوەی خۆکار کاتێک تۆمارکردن لە هەورەوە دەگۆڕێت ---------- */
   document.addEventListener("naxosh:bookings", () => {
-    if (NAXOSH.isAdmin() && activeTab === "bookings") renderTab();
+    if (NAXOSH.isAdmin() && (activeTab === "bookings" || activeTab === "schedules")) renderTab();
   });
-  // بەستەری ژووری پزیشک لە ناوەڕۆکەوە دێت — تابی تۆمارکراوەکان نوێ بکەرەوە
+  // بەستەری ژووری پزیشک لە ناوەڕۆکەوە دێت — تابی تۆمارکراوەکان و خشتەکان نوێ بکەرەوە
+  // (تابی پزیشکەکان نا، تاکو دەستکارییە پاشەکەوتنەکراوەکان نەسڕێنەوە)
   document.addEventListener("naxosh:content", () => {
-    if (NAXOSH.isAdmin() && activeTab === "bookings") renderTab();
+    if (NAXOSH.isAdmin() && (activeTab === "bookings" || activeTab === "schedules")) renderTab();
   });
 
   /* ---------- گۆڕانی دۆخی ناسنامە (دانیشتنی پارێزراو یان چوونەدەرەوە) ---------- */

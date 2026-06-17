@@ -13,7 +13,7 @@
   const root = document.getElementById("dr-root");
   if (!root) return;
 
-  let activeTab = "bookings";
+  let activeTab = "overview";
 
   function online() { return window.NAXOSH_DB && NAXOSH_DB.active; }
   function myDoctor() {
@@ -75,7 +75,7 @@
   function renderPanel() {
     const me = myDoctor();
     const T = STR.dr.tabs;
-    const tabs = [["bookings", T.bookings], ["schedule", T.schedule], ["settings", T.settings]];
+    const tabs = [["overview", T.overview], ["bookings", T.bookings], ["schedule", T.schedule], ["settings", T.settings]];
     root.innerHTML = `
       <div class="adm-wrap dr-wrap container">
         <div class="adm-bar">
@@ -109,7 +109,22 @@
     if (!old) return;
     const box = old.cloneNode(false);
     old.replaceWith(box);
-    ({ bookings: tabBookings, schedule: tabSchedule, settings: tabSettings }[activeTab] || tabBookings)(box);
+    ({ overview: tabOverview, bookings: tabBookings, schedule: tabSchedule, settings: tabSettings }[activeTab] || tabOverview)(box);
+  }
+
+  /* ---------- تابی کۆی گشتی ---------- */
+  function tabOverview(box) {
+    const me = myDoctor();
+    if (!me) {
+      box.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><h3>${STR.dr.notDoctor}</h3></div>`;
+      return;
+    }
+    box.innerHTML = `
+      <div class="adm-section">
+        <h3>${STR.dr.tabs.overview}</h3>
+        <p class="muted">${STR.dr.overviewHint}</p>
+        ${scheduleOverviewHtml(me, { days: 14 })}
+      </div>`;
   }
 
   /* ---------- تابی چاوپێکەوتنەکان ---------- */
@@ -234,12 +249,12 @@
 
   /* ---------- نوێکردنەوەی خۆکار ---------- */
   document.addEventListener("naxosh:bookings", () => {
-    if (online() && NAXOSH_DB.isDoctor() && activeTab === "bookings") renderTab();
+    if (online() && NAXOSH_DB.isDoctor() && (activeTab === "bookings" || activeTab === "overview")) renderTab();
   });
-  // ناوەڕۆک/خشتە لە هەورەوە گۆڕا — تەنها تابی چاوپێکەوتنەکان نوێ بکەرەوە
+  // ناوەڕۆک/خشتە لە هەورەوە گۆڕا — تابی چاوپێکەوتنەکان و کۆی گشتی نوێ بکەرەوە
   // (تابی خشتە نا، تاکو دەستکارییەکانی پزیشک نەسڕێتەوە لە کاتی نووسیندا)
   document.addEventListener("naxosh:content", () => {
-    if (online() && NAXOSH_DB.isDoctor() && activeTab === "bookings") renderTab();
+    if (online() && NAXOSH_DB.isDoctor() && (activeTab === "bookings" || activeTab === "overview")) renderTab();
   });
 
   /* ---------- گۆڕانی دۆخی ناسنامە ---------- */

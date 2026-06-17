@@ -295,13 +295,83 @@ function attachmentsHtml(list, opts) {
     const rm = opts.removable
       ? `<button type="button" class="attach-rm" data-attach="${escAttr(a.id)}" aria-label="سڕینەوە">✕</button>` : "";
     return `<div class="attach-item">
-      <a class="attach-thumb" href="${a.data}" target="_blank" rel="noopener" download="${escAttr(a.name)}">${thumb}</a>
+      <a class="attach-thumb" href="${a.data}" target="_blank" rel="noopener"
+         data-att-name="${escAttr(a.name)}" data-att-type="${escAttr(a.type || "")}">${thumb}</a>
       <span class="attach-name">${escAttr(a.name)}</span>
       ${rm}
     </div>`;
   }).join("");
   return `<div class="attach-list">${items}</div>`;
 }
+
+/* داتا-URI بگۆڕە بۆ Blob — وەبگەڕانی نوێ بۆ data: لە زۆر براوزەردا
+   بلۆک دەکرێت، بەڵام Blob URL کار دەکات. */
+function dataUriToBlobUrl(dataUri) {
+  const parts = String(dataUri).split(",");
+  const mime = (parts[0].match(/data:([^;]+)/) || [, "application/octet-stream"])[1];
+  const bin = atob(parts[1] || "");
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return URL.createObjectURL(new Blob([bytes], { type: mime }));
+}
+
+/* هاوپێچ یەکسەر لەناو لاپەڕەدا پیشان بدە — وێنە و PDF بەبێ داگرتن. */
+function openAttachmentViewer(att) {
+  const type = att.type || "";
+  const name = att.name || "پەڕگە";
+  const isImg = /^image\//.test(type);
+  const isPdf = /pdf/i.test(type) || /\.pdf$/i.test(name);
+  let blobUrl = "";
+  let inner;
+
+  if (isImg) {
+    inner = `<img class="viewer-img" src="${att.data}" alt="${escAttr(name)}">`;
+  } else if (isPdf) {
+    blobUrl = dataUriToBlobUrl(att.data);
+    inner = `<iframe class="viewer-frame" src="${blobUrl}" title="${escAttr(name)}"></iframe>`;
+  } else {
+    inner = `<div class="viewer-fallback">
+      <span class="attach-file-ico">📄</span>
+      <p>${escAttr(name)}</p>
+      <p class="muted">ئەم جۆرە پەڕگەیە ناتوانرێت لێرە پیشان بدرێت.</p>
+    </div>`;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "viewer-overlay";
+  overlay.innerHTML = `
+    <div class="viewer-box">
+      <div class="viewer-head">
+        <span class="viewer-title">${escAttr(name)}</span>
+        <a class="viewer-dl" href="${att.data}" download="${escAttr(name)}" title="داگرتن">⬇</a>
+        <button class="viewer-close" type="button" aria-label="داخستن">✕</button>
+      </div>
+      <div class="viewer-body">${inner}</div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  function close() {
+    overlay.remove();
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+    document.removeEventListener("keydown", onKey);
+  }
+  function onKey(e) { if (e.key === "Escape") close(); }
+  overlay.querySelector(".viewer-close").addEventListener("click", close);
+  overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+  document.addEventListener("keydown", onKey);
+}
+
+/* کرتە لەسەر هەر هاوپێچێک → بینەری ناوخۆیی بکەرەوە (لە جیاتی داگرتن). */
+document.addEventListener("click", function (e) {
+  const a = e.target.closest && e.target.closest(".attach-thumb");
+  if (!a) return;
+  e.preventDefault();
+  openAttachmentViewer({
+    data: a.getAttribute("href"),
+    name: a.getAttribute("data-att-name") || "",
+    type: a.getAttribute("data-att-type") || ""
+  });
+});
 
 /* هاوپێچی نوێ زیاد بکە بۆ تۆمارێکی هەبوو — ناوخۆیی پاشەکەوتی بکە و بۆ
    هەوریش بینێرە (بۆیە پزیشک یەکسەر دەیبینێت). لیستی نوێ دەگەڕێنێتەوە. */

@@ -53,20 +53,31 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
 
-    // A "doctor" is an email/password account listed in doctorAccounts
-    // (the admin creates those from the dashboard's Doctors tab).
-    function isDoctor() {
+    // Any email/password account listed in doctorAccounts (the admin creates
+    // those from the dashboard's Doctors tab) — active OR disabled.
+    function isDoctorAccount() {
       return signedIn() &&
         exists(/databases/$(database)/documents/doctorAccounts/$(request.auth.uid));
+    }
+    // A disabled account belongs to a doctor the admin has deleted: it must
+    // not be able to log in or read anything.
+    function doctorDisabled() {
+      return get(/databases/$(database)/documents/doctorAccounts/$(request.auth.uid)).data.disabled == true;
+    }
+    // A working doctor = listed AND not disabled. Used for all data access.
+    function isDoctor() {
+      return isDoctorAccount() && !doctorDisabled();
     }
     function docId() {
       return get(/databases/$(database)/documents/doctorAccounts/$(request.auth.uid)).data.doctorId;
     }
-    // The admin is an email/password account that is NOT a doctor.
+    // The admin is an email/password account that is NOT in doctorAccounts at
+    // all. (A disabled doctor is still IN doctorAccounts, so it can never be
+    // mistaken for the admin.)
     function isAdmin() {
       return signedIn()
         && request.auth.token.firebase.sign_in_provider == 'password'
-        && !isDoctor();
+        && !isDoctorAccount();
     }
 
     // Site CONTENT (all texts, doctors, time slots): PUBLIC read so first-time

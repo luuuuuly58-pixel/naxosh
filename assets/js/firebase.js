@@ -160,11 +160,16 @@ window.NAXOSH_DB = (function () {
     // هەژماری ئیمەیڵ: ئەگەر لە doctorAccounts دا بێت پزیشکە، ئەگەرنا بەڕێوەبەرە
     db.collection("doctorAccounts").doc(user.uid).get()
       .then(snap => {
+        // هەژماری پزیشک کە ناچالاک کراوە (پزیشک سڕاوەتەوە) — دەرچوون بکە
+        if (snap.exists && snap.data().disabled) {
+          auth.signOut().catch(() => {});
+          return;   // finishAuth بانگ ناکرێت — دواتر بە نهێنی دێتەوە ژوورەوە
+        }
         if (snap.exists) { curRole = "doctor"; curDoctorId = snap.data().doctorId; }
         else curRole = "admin";
+        finishAuth();
       })
-      .catch(() => { curRole = "admin"; })
-      .then(finishAuth);
+      .catch(() => { curRole = "admin"; finishAuth(); });
   });
 
   /* ---------- نووسین بۆ هەور ---------- */
@@ -239,8 +244,18 @@ window.NAXOSH_DB = (function () {
   /* ---------- چوونەژوورەوەی بەڕێوەبەر / پزیشک (ئیمەیڵ + وشەی نهێنی) ---------- */
   function adminSignIn(email, pw) {
     return auth.signInWithEmailAndPassword((email || "").trim(), pw)
-      .then(() => true)
-      .catch(e => { console.warn("[naxosh] adminSignIn:", e.code || e); return false; });
+      .then(cred =>
+        // ئەگەر هەژماری پزیشک بێت بەڵام ناچالاک کرابێت — دەرچوون و ڕەتکردنەوە
+        db.collection("doctorAccounts").doc(cred.user.uid).get()
+          .then(snap => {
+            if (snap.exists && snap.data().disabled) {
+              return auth.signOut().then(() => ({ ok: false, code: "account-disabled" }));
+            }
+            return { ok: true };
+          })
+          .catch(() => ({ ok: true }))   // نەتوانرا بپشکنرێت — ڕێگەی پێبدە
+      )
+      .catch(e => { console.warn("[naxosh] adminSignIn:", e.code || e); return { ok: false, code: e.code || String(e) }; });
   }
   function signOutAdmin() {
     // دەرچوون پاشان دووبارە بە نهێنی دەچینەوە ژوورەوە (لە onAuthStateChanged)
@@ -273,14 +288,22 @@ window.NAXOSH_DB = (function () {
       .catch(e => ({ ok: false, code: e.code || String(e) }));
   }
   function listDoctorAccounts() {
-    // بۆ بەڕێوەبەر: نەخشەی doctorId → ئیمەیڵ
+    // بۆ بەڕێوەبەر: نەخشەی doctorId → ئیمەیڵ (هەژمارە ناچالاکەکان نایەن)
     return db.collection("doctorAccounts").get()
       .then(snap => {
         const m = {};
-        snap.forEach(doc => { const a = doc.data(); m[String(a.doctorId)] = a.email; });
+        snap.forEach(doc => { const a = doc.data(); if (a.disabled) return; m[String(a.doctorId)] = a.email; });
         return m;
       })
       .catch(e => { console.warn("[naxosh] listDoctorAccounts:", e); return {}; });
+  }
+  /* ناچالاککردنی هەژمار(ەکان)ی پزیشکێک — کاتێک پزیشک لە داشبۆردی بەڕێوەبەر
+     دەسڕێتەوە. هەژمارەکە لە Firebase Auth ناسڕێتەوە (پێویستی بە سێرڤەرە)،
+     بەڵام نیشانەی disabled لۆگین ناکرێت و دەرچوونی لێدەکرێت. */
+  function disableDoctorAccount(doctorId) {
+    return db.collection("doctorAccounts").where("doctorId", "==", doctorId).get()
+      .then(snap => Promise.all(snap.docs.map(d => d.ref.update({ disabled: true, disabledAt: Date.now() }))))
+      .catch(e => { console.warn("[naxosh] disableDoctorAccount:", e); });
   }
   function saveDoctorSettings(doctorId, data) {
     // هەڵە ناشاردرێتەوە — بانگکەر خۆی بڕیار دەدات چۆن پیشانی بدات
@@ -305,7 +328,7 @@ window.NAXOSH_DB = (function () {
     whenReady,
     pushContent, pushSettings, pushBooking, removeBooking, updateBooking, pushUser,
     takeSlot, freeSlot, watchTaken,
-    createDoctorAccount, listDoctorAccounts, saveDoctorSettings,
+    createDoctorAccount, listDoctorAccounts, disableDoctorAccount, saveDoctorSettings,
     watchChat, sendChat,
     adminSignIn, signOutAdmin, changeAdminPassword
   };

@@ -53,10 +53,10 @@
         const email = root.querySelector("#adm-email").value;
         const btn = root.querySelector("#adm-enter");
         btn.disabled = true; setErr("");
-        NAXOSH_DB.adminSignIn(email, pw).then(ok => {
+        NAXOSH_DB.adminSignIn(email, pw).then(res => {
           btn.disabled = false;
-          if (ok) { renderPanel(); renderChrome("admin"); }
-          else setErr(STR.admin.wrongPw);
+          if (res && res.ok) { renderPanel(); renderChrome("admin"); }
+          else setErr(res && res.code === "account-disabled" ? STR.auth.staffDisabled : STR.admin.wrongPw);
         });
       } else {
         if (NAXOSH.adminLogin(pw)) { renderPanel(); renderChrome("admin"); }
@@ -208,6 +208,14 @@
     if (window.NAXOSH_DB && NAXOSH_DB.active) {
       NAXOSH_DB.listDoctorAccounts().then(map => {
         docAccounts = map || {};
+        // هەژمارە بێ‌خاوەنەکان (پزیشکیان پێشتر سڕاوەتەوە) ناچالاک بکە تاکو لۆگین نەکرێن
+        const ids = new Set(content.doctors.map(d => String(d.id)));
+        Object.keys(docAccounts).forEach(did => {
+          if (!ids.has(did) && NAXOSH_DB.disableDoctorAccount) {
+            NAXOSH_DB.disableDoctorAccount(isNaN(did) ? did : Number(did));
+            delete docAccounts[did];
+          }
+        });
         box.querySelectorAll("[data-acc]").forEach(n => {
           const email = docAccounts[n.dataset.acc];
           n.textContent = email
@@ -289,7 +297,14 @@
         return;
       }
       const del = e.target.closest(".adm-del"); if (!del) return;
-      content.doctors.splice(+del.dataset.idx, 1); renderTab();
+      const idx = +del.dataset.idx;
+      const doc = content.doctors[idx];
+      if (!confirm("ئەم پزیشکە بسڕێتەوە؟ هەژماری چوونەژوورەوەشی ناچالاک دەکرێت و ئیتر ناتوانێت بچێتە داشبۆردەوە.")) return;
+      // هەژماری چوونەژوورەوەی پزیشک ناچالاک بکە تاکو لۆگین نەکرێت
+      if (doc && window.NAXOSH_DB && NAXOSH_DB.active && NAXOSH_DB.disableDoctorAccount) {
+        NAXOSH_DB.disableDoctorAccount(doc.id);
+      }
+      content.doctors.splice(idx, 1); renderTab();
     });
   }
   function doctorRow(d, idx) {

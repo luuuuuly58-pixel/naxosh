@@ -655,10 +655,10 @@ function openAuthModal(onSuccess) {
     if (online) {
       const email = overlay.querySelector("#staff-email").value;
       btn.disabled = true; err.textContent = "";
-      NAXOSH_DB.adminSignIn(email, pw).then(ok => {
+      NAXOSH_DB.adminSignIn(email, pw).then(res => {
         btn.disabled = false;
-        if (ok) { close(); /* naxosh:auth مینۆ نوێ دەکاتەوە */ }
-        else err.textContent = STR.auth.staffWrong;
+        if (res && res.ok) { close(); /* naxosh:auth مینۆ نوێ دەکاتەوە */ }
+        else err.textContent = (res && res.code === "account-disabled") ? STR.auth.staffDisabled : STR.auth.staffWrong;
       });
     } else {
       if (NAXOSH.adminLogin(pw)) { close(); renderChrome(document.body.dataset.page); }

@@ -61,9 +61,9 @@
       const pw = root.querySelector("#dr-pw").value;
       const btn = root.querySelector("#dr-enter");
       btn.disabled = true; setErr("");
-      NAXOSH_DB.adminSignIn(email, pw).then(ok => {
+      NAXOSH_DB.adminSignIn(email, pw).then(res => {
         btn.disabled = false;
-        if (!ok) setErr(STR.admin.wrongPw);
+        if (!res || !res.ok) setErr(res && res.code === "account-disabled" ? STR.dr.accountDisabled : STR.admin.wrongPw);
         // ئەگەر سەرکەوتوو بێت، naxosh:auth خۆی داشبۆرد پیشان دەدات
       });
     };

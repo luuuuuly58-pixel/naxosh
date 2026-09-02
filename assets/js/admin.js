@@ -103,12 +103,21 @@
     });
 
     root.querySelector("#adm-save").addEventListener("click", () => {
+      // خشتەی پزیشکەکان (ڕۆژ/کات/بەستەر) سەرەتا لە ناوخۆدا نوێ بکەرەوە.
+      // saveContent ← applyContent ← overlayDoctorSettings کاردەکات، بۆیە ئەگەر
+      // نەخشەکە نوێ نەکەینەوە، خشتەی کۆنی هەور دەستکارییەکانی بەڕێوەبەر دەسڕێتەوە
+      // (چونکە هەمان ئۆبجێکتی پزیشکن — بە ڕیفێرێنس).
+      const settings = {};
+      content.doctors.forEach(d => {
+        settings[String(d.id)] = { days: d.days || [], slots: d.slots || [], daySlots: d.daySlots || {}, meet: d.meet || "" };
+      });
+      NAXOSH.applyDoctorSettings(settings);
+
       NAXOSH.saveContent(content);
-      // خشتە و بەستەری پزیشکەکان هاوکات بکە لەگەڵ doctorSettings —
-      // ئەگەرنا دەستکارییە کۆنەکانی پزیشک خۆی دەستکاریی بەڕێوەبەر دادەپۆشێت
+      // پاشان بۆ هەور بینێرە — ئەگەرنا دەستکارییە کۆنەکانی پزیشک خۆی دەستکاریی بەڕێوەبەر دادەپۆشێت
       if (window.NAXOSH_DB && NAXOSH_DB.active) {
         content.doctors.forEach(d =>
-          NAXOSH_DB.saveDoctorSettings(d.id, { days: d.days || [], slots: d.slots || [], daySlots: d.daySlots || {}, meet: d.meet || "" })
+          NAXOSH_DB.saveDoctorSettings(d.id, settings[String(d.id)])
             .catch(e => console.warn("[naxosh] doctorSettings sync:", e)));
       }
       content = NAXOSH.snapshot(); flash(STR.admin.saved);

@@ -62,7 +62,10 @@ service cloud.firestore {
     // A disabled account belongs to a doctor the admin has deleted: it must
     // not be able to log in or read anything.
     function doctorDisabled() {
-      return get(/databases/$(database)/documents/doctorAccounts/$(request.auth.uid)).data.disabled == true;
+      // .get() with a default: accounts created before the "disabled" flag
+      // existed have no such field, and reading a missing field would ERROR
+      // (= every write by an active doctor denied with permission-denied).
+      return get(/databases/$(database)/documents/doctorAccounts/$(request.auth.uid)).data.get('disabled', false) == true;
     }
     // A working doctor = listed AND not disabled. Used for all data access.
     function isDoctor() {

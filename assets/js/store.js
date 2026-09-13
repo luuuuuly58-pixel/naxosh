@@ -161,3 +161,7 @@ const NAXOSH = (function () {
     getUser, userLogin, userLogout
   };
 })();
+// NAXOSH گلۆباڵێکی لێکسیکاڵە (const) و خۆکارانە لەسەر window نییە — لێرە
+// دەیخەینە سەر window تاکو firebase.js (کە پشکنینی window.NAXOSH دەکات)
+// بتوانێت ناوەڕۆک و خشتەی پزیشکان لە هەورەوە یەکسەر جێبەجێ بکات.
+window.NAXOSH = NAXOSH;

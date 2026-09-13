@@ -64,7 +64,7 @@ window.NAXOSH_DB = (function () {
         if (!snap.exists) return;
         const c = snap.data();
         try { localStorage.setItem(LS.content, JSON.stringify(c)); } catch (_) {}
-        if (window.NAXOSH && typeof NAXOSH.applyContent === "function") NAXOSH.applyContent(c);
+        if (typeof NAXOSH !== "undefined" && typeof NAXOSH.applyContent === "function") NAXOSH.applyContent(c);
         emit("naxosh:content", c);
       }, err => {
         // ئەگەر یاسای خوێندنەوەی گشتی هێشتا بڵاو نەکراوەتەوە، پێش ناسنامە هەڵە دەدات.
@@ -79,7 +79,7 @@ window.NAXOSH_DB = (function () {
       db.collection("doctorSettings").onSnapshot(snap => {
         const map = {};
         snap.forEach(doc => { map[doc.id] = doc.data(); });
-        if (window.NAXOSH && typeof NAXOSH.applyDoctorSettings === "function") {
+        if (typeof NAXOSH !== "undefined" && typeof NAXOSH.applyDoctorSettings === "function") {
           NAXOSH.applyDoctorSettings(map);
         }
         emit("naxosh:content", null);
